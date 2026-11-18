@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="Stoqa">
+  <defs>
+    <linearGradient id="gi" x1="8" y1="4" x2="88" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5CC4B8"/><stop offset="1" stop-color="#278177"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="26" fill="url(#gi)"/>
+  <g stroke-linejoin="round" stroke-width="4">
+    <path d="M48 20 72 34 48 48 24 34Z" fill="#FFFFFF" stroke="#FFFFFF"/>
+    <path d="M24 34 48 48 48 76 24 62Z" fill="#FFFFFF" fill-opacity=".8" stroke="#FFFFFF" stroke-opacity=".8"/>
+    <path d="M72 34 48 48 48 76 72 62Z" fill="#FFFFFF" fill-opacity=".6" stroke="#FFFFFF" stroke-opacity=".6"/>
+  </g>
+  <circle cx="48" cy="34" r="4.5" fill="#F4B860"/>
+</svg>
