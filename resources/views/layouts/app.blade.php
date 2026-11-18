@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full bg-slate-50">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <title>{{ $title ?? 'Katalog & Stok Gudang' }} - Stoqa</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/stoqa-icon.svg') }}">
+
+    <!-- Compiled Assets (Fast & Lightweight) -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+
+    @livewireStyles
+</head>
+<body class="flex flex-col min-h-screen text-slate-800 antialiased font-sans pb-16 md:pb-0">
+
+    <!-- Header & Navigation -->
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & Brand -->
+                <div class="flex items-center gap-3">
+                    <a href="{{ url('/') }}" wire:navigate class="flex items-center gap-2 group">
+                        <img src="{{ asset('images/stoqa-logo.svg') }}" alt="Stoqa Logo" class="h-8 w-auto">
+                    </a>
+                </div>
+
+                <!-- Desktop Nav -->
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="{{ url('/') }}" wire:navigate class="text-sm font-semibold {{ request()->is('/') ? 'text-stoqa-600 font-bold' : 'text-slate-600 hover:text-stoqa-600' }}">
+                        Katalog Produk
+                    </a>
+                    <a href="{{ url('/keranjang') }}" wire:navigate class="text-sm font-semibold {{ request()->is('keranjang') ? 'text-stoqa-600 font-bold' : 'text-slate-600 hover:text-stoqa-600' }} flex items-center gap-1.5">
+                        <span>Keranjang</span>
+                        <span class="px-2 py-0.5 text-xs rounded-full bg-stoqa-100 text-stoqa-700 font-bold">
+                            {{ app(\App\Services\CartService::class)->count() }}
+                        </span>
+                    </a>
+                    @auth
+                        <a href="{{ url('/pesanan-saya') }}" wire:navigate class="text-sm font-semibold {{ request()->is('pesanan-saya*') ? 'text-stoqa-600 font-bold' : 'text-slate-600 hover:text-stoqa-600' }}">
+                            Pesanan Saya
+                        </a>
+                        @role('admin|staf_gudang')
+                            <a href="{{ url('/admin') }}" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-sand-100 text-sand-800 hover:bg-sand-500/30 transition">
+                                Panel Admin
+                            </a>
+                        @endrole
+                        <form method="POST" action="{{ route('logout') }}" class="inline">
+                            @csrf
+                            <button type="submit" class="text-sm font-medium text-rose-600 hover:text-rose-700">
+                                Keluar
+                            </button>
+                        </form>
+                    @else
+                        <a href="{{ route('login') }}" class="text-sm font-semibold text-slate-700 hover:text-stoqa-600">
+                            Masuk
+                        </a>
+                        <a href="{{ route('register') }}" class="text-sm font-semibold px-4 py-2 rounded-xl bg-stoqa-600 hover:bg-stoqa-700 text-white shadow-sm transition">
+                            Daftar Akun
+                        </a>
+                    @endauth
+                </nav>
+
+                <!-- Mobile Header Right -->
+                <div class="flex items-center md:hidden gap-2">
+                    <a href="{{ url('/keranjang') }}" wire:navigate class="relative p-2 text-slate-700 hover:text-stoqa-600 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                        </svg>
+                        <span class="absolute top-1 right-1 w-4 h-4 bg-stoqa-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                            {{ app(\App\Services\CartService::class)->count() }}
+                        </span>
+                    </a>
+
+                    @auth
+                        <a href="{{ url('/akun') }}" wire:navigate class="w-8 h-8 rounded-full bg-stoqa-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        </a>
+                    @else
+                        <a href="{{ route('login') }}" wire:navigate class="px-2.5 py-1 text-xs font-bold text-stoqa-600 border border-stoqa-200 rounded-lg hover:bg-stoqa-50 transition">
+                            Masuk
+                        </a>
+                    @endauth
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Flash Notifications -->
+    @if (session()->has('success'))
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+            <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium flex items-center gap-2">
+                <svg class="w-5 h-5 text-emerald-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span>{{ session('success') }}</span>
+            </div>
+        </div>
+    @endif
+    @if (session()->has('error'))
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+            <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-medium flex items-center gap-2">
+                <svg class="w-5 h-5 text-rose-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <span>{{ session('error') }}</span>
+            </div>
+        </div>
+    @endif
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {{ $slot ?? '' }}
+        @yield('content')
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar (4 Menu Responsif) -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 flex items-center justify-around h-15 pb-safe">
+        <a href="{{ url('/') }}" wire:navigate class="flex flex-col items-center justify-center flex-1 py-1.5 text-[11px] {{ request()->is('/') ? 'text-stoqa-600 font-bold' : 'text-slate-500 hover:text-stoqa-600' }}">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            <span>Katalog</span>
+        </a>
+
+        <a href="{{ url('/keranjang') }}" wire:navigate class="flex flex-col items-center justify-center flex-1 py-1.5 text-[11px] relative {{ request()->is('keranjang') ? 'text-stoqa-600 font-bold' : 'text-slate-500 hover:text-stoqa-600' }}">
+            <div class="relative">
+                <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                @if (app(\App\Services\CartService::class)->count() > 0)
+                    <span class="absolute -top-1 -right-2 w-3.5 h-3.5 bg-stoqa-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {{ app(\App\Services\CartService::class)->count() }}
+                    </span>
+                @endif
+            </div>
+            <span>Keranjang</span>
+        </a>
+
+        <a href="{{ auth()->check() ? url('/pesanan-saya') : route('login') }}" wire:navigate class="flex flex-col items-center justify-center flex-1 py-1.5 text-[11px] {{ request()->is('pesanan-saya*') ? 'text-stoqa-600 font-bold' : 'text-slate-500 hover:text-stoqa-600' }}">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            <span>Pesanan</span>
+        </a>
+
+        <a href="{{ url('/akun') }}" wire:navigate class="flex flex-col items-center justify-center flex-1 py-1.5 text-[11px] {{ request()->is('akun*') || request()->is('login') || request()->is('register') ? 'text-stoqa-600 font-bold' : 'text-slate-500 hover:text-stoqa-600' }}">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            <span>{{ auth()->check() ? 'Akun' : 'Masuk' }}</span>
+        </a>
+    </div>
+
+    @livewireScripts
+</body>
+</html>

@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+
+@source '../views/**/*.blade.php';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Nunito', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Stoqa Teal Palette */
+    --color-stoqa-50:  #EFFAF8;
+    --color-stoqa-100: #D7F3EE;
+    --color-stoqa-200: #B1E6DE;
+    --color-stoqa-300: #82D3C9;
+    --color-stoqa-400: #52B9AE;
+    --color-stoqa-500: #34A095;
+    --color-stoqa-600: #278177;
+    --color-stoqa-700: #23675F;
+    --color-stoqa-800: #20534D;
+    --color-stoqa-900: #1E4642;
+    --color-stoqa-950: #0C2A28;
+
+    /* Brand Alias ke Stoqa */
+    --color-brand-50:  #EFFAF8;
+    --color-brand-100: #D7F3EE;
+    --color-brand-200: #B1E6DE;
+    --color-brand-300: #82D3C9;
+    --color-brand-400: #52B9AE;
+    --color-brand-500: #34A095;
+    --color-brand-600: #278177;
+    --color-brand-700: #23675F;
+    --color-brand-800: #20534D;
+    --color-brand-900: #1E4642;
+    --color-brand-950: #0C2A28;
+
+    /* Aksen Hangat & Status */
+    --color-sand-100: #FCEFD3;   /* latar peringatan lembut */
+    --color-sand-500: #F4B860;   /* aksen hangat */
+    --color-sand-800: #7A4B05;   /* teks di atas sand-100 */
+
+    /* Warna Netral Brand Kit */
+    --color-ink: #1F2D2B;        /* teks utama */
+    --color-mist: #F6F8F7;       /* latar halaman */
+    --color-night: #0F1A19;      /* latar mode gelap */
+    --color-night-card: #162423; /* kartu mode gelap */
+
+    --radius-card: 1rem;
+    --radius-control: 0.75rem;
+}
