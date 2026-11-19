@@ -44,12 +44,8 @@ class OrdersTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (OrderStatus $state): string => match ($state) {
-                        OrderStatus::MENUNGGU_ONGKIR => 'warning',
-                        OrderStatus::PENDING_PAYMENT => 'info',
-                        OrderStatus::PAID, OrderStatus::COMPLETED => 'success',
-                        OrderStatus::REJECTED, OrderStatus::CANCELLED, OrderStatus::EXPIRED => 'danger',
-                    }),
+                    ->color(fn (OrderStatus $state): string => $state->color())
+                    ->formatStateUsing(fn (OrderStatus $state): string => $state->label()),
                 TextColumn::make('subtotal')
                     ->label('Subtotal')
                     ->money('IDR', locale: 'id')

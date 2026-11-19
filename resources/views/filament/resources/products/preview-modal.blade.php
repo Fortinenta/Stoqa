@@ -151,6 +151,9 @@
                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition">
                                 <td class="py-2.5 px-3 font-mono font-bold text-blue-600 dark:text-blue-400">
                                     {{ $order?->invoice_no ?? ('Order #' . $order?->id) }}
+                                    @if ($order?->invoice_no)
+                                        <span class="text-[10px] text-slate-400 block font-sans font-normal">Order #{{ $order?->id }}</span>
+                                    @endif
                                 </td>
                                 <td class="py-2.5 px-3 text-slate-800 dark:text-slate-200 font-bold">
                                     {{ $order?->customer_name ?? $order?->user?->name ?? 'Pembeli Umum' }}
