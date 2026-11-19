@@ -1,4 +1,4 @@
-<div class="max-w-xl mx-auto py-4">
+<div class="max-w-xl mx-auto py-4" x-data="{ showLogoutModal: false }">
     <div class="mb-6">
         <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Akun Saya</h1>
         <p class="text-xs sm:text-sm text-slate-500 mt-1">Kelola data profil, pesanan, dan sesi login Anda.</p>
@@ -124,13 +124,84 @@
             <div class="pt-2">
                 <button
                     type="button"
-                    wire:confirm="Apakah Anda yakin ingin keluar dari akun ini?"
-                    wire:click="logout"
-                    class="w-full py-3.5 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-sm border border-rose-200 transition flex items-center justify-center gap-2"
+                    @click="showLogoutModal = true"
+                    class="w-full py-3.5 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-sm border border-rose-200 transition flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
                 >
                     <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     <span>Keluar dari Akun</span>
                 </button>
+            </div>
+
+            <!-- Modal Konfirmasi Keluar Kustom (Bukan Browser Alert) -->
+            <div
+                x-show="showLogoutModal"
+                x-cloak
+                class="fixed inset-0 z-50 overflow-y-auto"
+                aria-labelledby="modal-title"
+                role="dialog"
+                aria-modal="true"
+            >
+                <div class="flex items-center justify-center min-h-screen px-4 py-6 text-center">
+                    <!-- Backdrop -->
+                    <div
+                        x-show="showLogoutModal"
+                        x-transition:enter="ease-out duration-200"
+                        x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100"
+                        x-transition:leave="ease-in duration-150"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0"
+                        @click="showLogoutModal = false"
+                        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+                        aria-hidden="true"
+                    ></div>
+
+                    <!-- Card Dialog -->
+                    <div
+                        x-show="showLogoutModal"
+                        x-transition:enter="ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95"
+                        x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:leave="ease-in duration-150"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-95"
+                        class="relative inline-block w-full max-w-sm p-6 overflow-hidden text-center bg-white rounded-3xl shadow-2xl border border-slate-100 transform transition-all z-10"
+                    >
+                        <!-- Icon Pintu / Keluar Merah Lembut -->
+                        <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 mb-4 shadow-xs">
+                            <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </div>
+
+                        <h3 class="text-base font-extrabold text-slate-900" id="modal-title">
+                            Konfirmasi Keluar Akun
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                            Apakah Anda yakin ingin keluar dari akun Stoqa ini? Anda dapat masuk kembali kapan saja.
+                        </p>
+
+                        <!-- Pilihan Tombol -->
+                        <div class="mt-6 flex items-center gap-3">
+                            <button
+                                type="button"
+                                @click="showLogoutModal = false"
+                                class="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                wire:click="logout"
+                                wire:loading.attr="disabled"
+                                class="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm hover:shadow transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                                <span wire:loading.remove>Ya, Keluar</span>
+                                <span wire:loading>Memproses...</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     @endif

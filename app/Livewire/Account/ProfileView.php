@@ -14,6 +14,7 @@ class ProfileView extends Component
         Auth::logout();
         session()->invalidate();
         session()->regenerateToken();
+        session()->flash('success', 'Anda telah berhasil keluar dari akun.');
 
         return redirect('/');
     }
