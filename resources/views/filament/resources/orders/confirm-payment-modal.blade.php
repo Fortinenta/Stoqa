@@ -1,5 +1,7 @@
 @php
-    $latestPayment = $order->payments()->latest()->first();
+    $latestPayment = $order->relationLoaded('payments')
+        ? $order->payments->whereNotNull('proof_url')->last() ?? $order->payments->last()
+        : $order->payments()->latest()->first();
     $payload = $latestPayment?->payload ?? [];
 @endphp
 
@@ -75,7 +77,9 @@
         </div>
     @endif
 
-    <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500">
-        Konfirmasi ini akan memotong saldo fisik batch FIFO secara permanen dan mencatat HPP serta laba kotor pada laporan keuangan.
-    </div>
+    @if (! ($isViewOnly ?? false))
+        <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500">
+            Konfirmasi ini akan memotong saldo fisik batch FIFO secara permanen dan mencatat HPP serta laba kotor pada laporan keuangan.
+        </div>
+    @endif
 </div>

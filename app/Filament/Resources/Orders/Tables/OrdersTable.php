@@ -23,6 +23,7 @@ class OrdersTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['payments', 'user']))
             ->columns([
                 TextColumn::make('invoice_no')
                     ->label('No. Invoice')
@@ -60,6 +61,24 @@ class OrdersTable
                     ->money('IDR', locale: 'id')
                     ->weight('bold')
                     ->sortable(),
+                TextColumn::make('payment_proof')
+                    ->label('Bukti Transfer')
+                    ->badge()
+                    ->state(function (Order $record) {
+                        $hasProof = $record->payments->contains(fn ($p) => ! empty($p->proof_url));
+                        if ($hasProof) {
+                            return 'Ada Bukti';
+                        }
+
+                        return in_array($record->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_ONGKIR])
+                            ? 'Belum Ada'
+                            : '-';
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'Ada Bukti' => 'success',
+                        'Belum Ada' => 'warning',
+                        default => 'gray',
+                    }),
                 TextColumn::make('cogs_total')
                     ->label('HPP (Modal)')
                     ->money('IDR', locale: 'id')
@@ -209,7 +228,21 @@ class OrdersTable
                         }
                     }),
 
-                // 3. Aksi Konfirmasi Pembayaran
+                // 3. Aksi Lihat Bukti Pembayaran
+                Action::make('viewProof')
+                    ->label('Lihat Bukti')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->visible(fn (Order $record) => $record->payments->contains(fn ($p) => ! empty($p->proof_url)))
+                    ->modalHeading(fn (Order $record) => 'Bukti Transfer - '.($record->invoice_no ?: ('Order #'.$record->id)))
+                    ->modalContent(fn (Order $record) => view('filament.resources.orders.confirm-payment-modal', [
+                        'order' => $record,
+                        'isViewOnly' => true,
+                    ]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup'),
+
+                // 4. Aksi Konfirmasi Pembayaran
                 Action::make('confirmPayment')
                     ->label('Konfirmasi Bayar')
                     ->icon('heroicon-o-check-badge')
