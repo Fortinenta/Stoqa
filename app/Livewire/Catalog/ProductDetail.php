@@ -112,8 +112,8 @@ class ProductDetail extends Component
         $validUnits = array_filter($this->quantities, fn ($q) => $q > 0);
         $cartService->add($this->product->id, $validUnits);
 
-        session()->flash('success', "{$this->product->name} berhasil ditambahkan ke keranjang!");
-        $this->redirect(url('/keranjang'));
+        session()->flash('success', "{$this->product->name} berhasil ditambahkan ke keranjang. Silakan pilih produk lainnya atau buka menu keranjang untuk checkout.");
+        $this->redirect(url('/'), navigate: true);
     }
 
     public function render()
