@@ -11,14 +11,26 @@ use App\Models\Category;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class CategoryResource extends Resource
 {
     protected static ?string $model = Category::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static ?string $navigationLabel = 'Rak & Kategori';
+
+    protected static ?string $modelLabel = 'Kategori';
+
+    protected static ?string $pluralModelLabel = 'Rak & Kategori';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Etalase';
+
+    protected static ?int $navigationSort = 2;
+
+    protected static string|BackedEnum|null $navigationIcon = 'phosphor-squares-four-duotone';
+
+    protected static string|BackedEnum|null $activeNavigationIcon = 'phosphor-squares-four-fill';
 
     protected static ?string $recordTitleAttribute = 'name';
 

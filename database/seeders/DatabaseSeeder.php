@@ -17,7 +17,13 @@ class DatabaseSeeder extends Seeder
         $this->call([
             InitialDataSeeder::class,
             AdminUserSeeder::class,
-            DummyDataSeeder::class,
         ]);
+
+        // Seeder dummy data hanya dijalankan di environment local atau testing
+        if (app()->environment(['local', 'testing'])) {
+            $this->call([
+                DummyDataSeeder::class,
+            ]);
+        }
     }
 }

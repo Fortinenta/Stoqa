@@ -7,6 +7,7 @@ use App\Exceptions\InsufficientStockException;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Setting;
+use App\Models\Warehouse;
 use App\Services\CartService;
 use App\Services\ReservationService;
 use Illuminate\Support\Facades\DB;
@@ -78,15 +79,19 @@ class CheckoutView extends Component
         // Ambil batas durasi pengisian ongkir admin (default 3 jam)
         $shippingDueHours = (int) (Setting::get('shipping_due_hours', 3));
         $shippingDueAt = now()->addHours($shippingDueHours);
+        $defaultWarehouseId = Warehouse::where('is_default', true)->value('id') ?? 1;
 
         try {
-            $order = DB::transaction(function () use ($cart, $shippingDueAt, $reservationService, $user) {
-                // 1. Buat Header Order
+            $order = DB::transaction(function () use ($cart, $shippingDueAt, $reservationService, $user, $defaultWarehouseId) {
+                // 1. Buat Header Order dengan snapshot kontak dan alamat pengiriman
                 $order = Order::create([
                     'user_id' => $user->id,
-                    'warehouse_id' => 1, // Gudang Utama
+                    'warehouse_id' => $defaultWarehouseId,
                     'channel' => 'catalog',
                     'customer_name' => $this->customer_name,
+                    'shipping_recipient_name' => $this->customer_name,
+                    'shipping_phone' => $this->phone,
+                    'shipping_address' => $this->shipping_address,
                     'status' => OrderStatus::MENUNGGU_ONGKIR,
                     'subtotal' => $cart['subtotal'],
                     'shipping_cost' => 0,
@@ -101,16 +106,31 @@ class CheckoutView extends Component
                 $reservationItems = [];
 
                 foreach ($cart['items'] as $item) {
-                    $orderItem = OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_id' => $item['product_id'],
-                        'unit_id' => $item['units_breakdown'][0]['unit_id'],
-                        'qty' => $item['units_breakdown'][0]['qty'],
-                        'qty_base' => $item['total_base_qty'],
-                        'unit_price' => $item['unit_price'],
-                        'price_source' => $item['price_source'],
-                        'line_total' => $item['total_price'],
-                    ]);
+                    $breakdowns = ! empty($item['units_breakdown']) ? $item['units_breakdown'] : [
+                        [
+                            'unit_id' => null,
+                            'qty' => $item['total_base_qty'],
+                            'qty_base' => $item['total_base_qty'],
+                            'conversion' => 1,
+                        ],
+                    ];
+
+                    // Buat OrderItem per pecahan unit agar qty × unit_conversion × unit_price = line_total
+                    foreach ($breakdowns as $b) {
+                        $lineBaseQty = (int) $b['qty_base'];
+                        $lineTotal = round($lineBaseQty * (float) $item['unit_price'], 2);
+
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'product_id' => $item['product_id'],
+                            'unit_id' => $b['unit_id'],
+                            'qty' => $b['qty'],
+                            'qty_base' => $lineBaseQty,
+                            'unit_price' => $item['unit_price'],
+                            'price_source' => $item['price_source'],
+                            'line_total' => $lineTotal,
+                        ]);
+                    }
 
                     $reservationItems[] = [
                         'product_id' => $item['product_id'],
@@ -132,12 +152,12 @@ class CheckoutView extends Component
             // Kosongkan keranjang
             $cartService->clear();
 
-            session()->flash('success', "Pesanan #{$order->id} berhasil dibuat! Stok barang telah ditahan. Admin akan mengisi ongkir dalam waktu maks. 3 jam.");
+            session()->flash('success', "Pesanan #{$order->id} berhasil dibuat! Stok barang telah ditahan. Admin akan mengisi ongkir dalam waktu maks. {$shippingDueHours} jam.");
             $this->redirect(url('/pesanan-saya'));
         } catch (InsufficientStockException $e) {
             session()->flash('error', $e->getMessage());
         } catch (\Throwable $e) {
-            session()->flash('error', 'Terjadi kesalahan saat memproses pesanan: '.$e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan sistem saat memproses pesanan: '.$e->getMessage());
         }
     }
 

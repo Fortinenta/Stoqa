@@ -18,6 +18,11 @@ class SalesRevenueChartWidget extends ChartWidget
 
     protected ?string $maxHeight = '280px';
 
+    public static function canView(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     protected function getType(): string
     {
         return 'line';

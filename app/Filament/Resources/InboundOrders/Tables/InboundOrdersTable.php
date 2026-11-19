@@ -2,9 +2,6 @@
 
 namespace App\Filament\Resources\InboundOrders\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -43,12 +40,10 @@ class InboundOrdersTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                // Data transaksi penerimaan barang tidak boleh diedit atau dihapus sembarangan
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                // Tidak ada bulk delete untuk transaksi stok
             ]);
     }
 }

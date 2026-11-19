@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Session;
 
 class CartService
 {
-    protected const SESSION_KEY = 'mysto_cart';
+    protected const SESSION_KEY = 'stoqa_cart';
 
     public function __construct(protected PricingCalculator $pricingCalculator) {}
 
@@ -18,7 +18,7 @@ class CartService
      */
     public function get(?User $user = null): array
     {
-        $rawCart = Session::get(self::SESSION_KEY, []);
+        $rawCart = Session::get(self::SESSION_KEY, Session::get('mysto_cart', []));
         $items = [];
         $totalBaseQtyAll = 0;
         $totalPriceAll = 0.0;
@@ -153,6 +153,7 @@ class CartService
     public function clear(): void
     {
         Session::forget(self::SESSION_KEY);
+        Session::forget('mysto_cart');
     }
 
     /**
@@ -160,6 +161,6 @@ class CartService
      */
     public function count(): int
     {
-        return count(Session::get(self::SESSION_KEY, []));
+        return count(Session::get(self::SESSION_KEY, Session::get('mysto_cart', [])));
     }
 }

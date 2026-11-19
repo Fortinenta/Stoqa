@@ -16,12 +16,14 @@ class AdminUserSeeder extends Seeder
         Role::firstOrCreate(['name' => 'staf_gudang', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'customer', 'guard_name' => 'web']);
 
+        $adminPassword = env('ADMIN_DEFAULT_PASSWORD', 'password');
+
         // Buat User Admin default
         $admin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Administrator',
-                'password' => Hash::make('password'),
+                'password' => Hash::make($adminPassword),
                 'is_active' => true,
             ]
         );

@@ -29,6 +29,9 @@ class ReservationService
         return DB::transaction(function () use ($orderId, $warehouseId, $items, $expiresAt) {
             $createdReservations = new Collection;
 
+            // Urutkan item berdasarkan product_id ascending untuk mencegah race condition & deadlock
+            usort($items, fn ($a, $b) => ((int) $a['product_id']) <=> ((int) $b['product_id']));
+
             foreach ($items as $item) {
                 $productId = (int) $item['product_id'];
                 $qtyBase = (int) $item['qty_base'];
@@ -114,13 +117,24 @@ class ReservationService
     public function consume(Order $order, ?int $userId = null): array
     {
         return DB::transaction(function () use ($order, $userId) {
-            $reservations = StockReservation::where('order_id', $order->id)
+            // Kunci baris order agar tidak terjadi race condition konfirmasi ganda
+            $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($lockedOrder->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_ONGKIR])) {
+                throw new \RuntimeException("Order #{$lockedOrder->id} tidak dapat dikonfirmasi pembayarannya karena berstatus: {$lockedOrder->status->label()}.");
+            }
+
+            $reservations = StockReservation::where('order_id', $lockedOrder->id)
                 ->where('status', ReservationStatus::ACTIVE)
                 ->lockForUpdate()
                 ->get();
 
+            if ($reservations->isEmpty()) {
+                throw new \RuntimeException("Tidak ada reservasi stok aktif untuk Order #{$lockedOrder->id}. Stok mungkin sudah kedaluwarsa atau dibatalkan.");
+            }
+
             $fifoItems = [];
-            foreach ($order->items as $orderItem) {
+            foreach ($lockedOrder->items as $orderItem) {
                 $fifoItems[] = [
                     'product_id' => $orderItem->product_id,
                     'qty_base' => $orderItem->qty_base,
@@ -130,10 +144,10 @@ class ReservationService
 
             // 1. Jalankan pemotongan fisik FIFO melalui StockService (on_hand & reserved turun bersamaan)
             $fulfillment = $this->stockService->fulfillFifoOutbound(
-                warehouseId: $order->warehouse_id,
+                warehouseId: $lockedOrder->warehouse_id,
                 items: $fifoItems,
                 refType: 'order',
-                refId: $order->id,
+                refId: $lockedOrder->id,
                 userId: $userId,
                 fromReservation: true
             );
@@ -144,8 +158,12 @@ class ReservationService
             }
 
             // 3. Simpan relasi batch dan update COGS di item order
-            foreach ($order->items as $orderItem) {
-                $itemAlloc = $fulfillment['allocations'][$orderItem->product_id] ?? null;
+            foreach ($lockedOrder->items as $orderItem) {
+                // Ambil alokasi berdasarkan order_item_id atau fallback product_id
+                $itemAlloc = $fulfillment['allocations']["item_{$orderItem->id}"]
+                    ?? $fulfillment['allocations'][$orderItem->product_id]
+                    ?? null;
+
                 if ($itemAlloc) {
                     $orderItem->update(['cogs_total' => $itemAlloc['cogs']]);
                     foreach ($itemAlloc['batches'] as $batchAlloc) {
@@ -158,10 +176,11 @@ class ReservationService
                 }
             }
 
-            // 4. Update order HPP & Status
-            $order->update([
+            // 4. Update order HPP & Status serta payment_status
+            $lockedOrder->update([
                 'cogs_total' => $fulfillment['total_cogs'],
                 'status' => OrderStatus::PAID,
+                'payment_status' => 'paid',
                 'paid_at' => now(),
             ]);
 
