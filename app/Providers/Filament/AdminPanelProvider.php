@@ -2,7 +2,11 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\CriticalStockTableWidget;
 use App\Filament\Widgets\InventoryOverviewWidget;
+use App\Filament\Widgets\RecentOrdersTableWidget;
+use App\Filament\Widgets\SalesRevenueChartWidget;
+use App\Filament\Widgets\StockMovementChartWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -76,6 +80,10 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 InventoryOverviewWidget::class,
+                SalesRevenueChartWidget::class,
+                StockMovementChartWidget::class,
+                CriticalStockTableWidget::class,
+                RecentOrdersTableWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
