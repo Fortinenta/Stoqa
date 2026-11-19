@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Resources\Orders\Pages\EditOrder;
+use App\Filament\Resources\Orders\OrderResource;
 use App\Models\Order;
 use Filament\Actions\Action;
 use Filament\Support\Enums\FontWeight;
@@ -62,7 +62,7 @@ class RecentOrdersTableWidget extends TableWidget
                 Action::make('view')
                     ->label('Detail')
                     ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (Order $record): string => EditOrder::getUrl(['record' => $record])),
+                    ->url(fn (): string => OrderResource::getUrl('index')),
             ])
             ->emptyStateHeading('Belum Ada Pesanan')
             ->emptyStateDescription('Pesanan yang masuk melalui kasir atau katalog akan tampil di sini.')

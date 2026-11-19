@@ -248,6 +248,9 @@ class StockService
             $totalCogs = '0.0000';
             $allocations = [];
 
+            // Urutkan item berdasarkan product_id ascending untuk mencegah deadlock
+            usort($items, fn ($a, $b) => ((int) $a['product_id']) <=> ((int) $b['product_id']));
+
             foreach ($items as $item) {
                 $productId = (int) $item['product_id'];
                 $qtyBase = (int) $item['qty_base'];
@@ -265,7 +268,7 @@ class StockService
 
                 $totalCogs = bcadd($totalCogs, $result['cogs'], 4);
 
-                $allocations[$productId] = [
+                $allocData = [
                     'cogs' => round((float) $result['cogs'], 2),
                     'batches' => array_map(function ($b) use ($orderItemId) {
                         $b['order_item_id'] = $orderItemId;
@@ -273,6 +276,11 @@ class StockService
                         return $b;
                     }, $result['batches']),
                 ];
+
+                if ($orderItemId) {
+                    $allocations["item_{$orderItemId}"] = $allocData;
+                }
+                $allocations[$productId] = $allocData;
             }
 
             return [
@@ -382,6 +390,10 @@ class StockService
                     $deduct = min($toDeduct, $batch->qty_remaining);
                     $batch->decrement('qty_remaining', $deduct);
                     $toDeduct -= $deduct;
+                }
+
+                if ($toDeduct > 0) {
+                    throw new InconsistentStockException($productId, "Kuantitas batch tidak mencukupi untuk pemotongan selisih opname (kurang {$toDeduct} unit).");
                 }
             }
 

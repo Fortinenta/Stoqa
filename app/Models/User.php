@@ -43,8 +43,8 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        // Admin & staf gudang bisa akses panel admin Filament
-        return $this->is_active && ($this->hasAnyRole(['admin', 'staf_gudang']) || $this->email === 'admin@example.com');
+        // Hanya admin dan staf gudang yang aktif yang berhak mengakses panel admin
+        return (bool) ($this->is_active && $this->hasAnyRole(['admin', 'staf_gudang']));
     }
 
     public function orders(): HasMany

@@ -11,16 +11,28 @@ use App\Models\Supplier;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use UnitEnum;
 
 class SupplierResource extends Resource
 {
     protected static ?string $model = Supplier::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static ?string $navigationLabel = 'Mitra Pemasok';
+
+    protected static ?string $modelLabel = 'Pemasok';
+
+    protected static ?string $pluralModelLabel = 'Mitra Pemasok';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Gudang';
+
+    protected static ?int $navigationSort = 4;
+
+    protected static string|BackedEnum|null $navigationIcon = 'phosphor-handshake-duotone';
+
+    protected static string|BackedEnum|null $activeNavigationIcon = 'phosphor-handshake-fill';
 
     protected static ?string $recordTitleAttribute = 'name';
 

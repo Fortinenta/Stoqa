@@ -3,19 +3,20 @@
 namespace App\Filament\Resources\Orders\Tables;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\ReservationStatus;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Models\StockReservation;
 use App\Services\ReservationService;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class OrdersTable
 {
@@ -63,9 +64,11 @@ class OrdersTable
                     ->label('HPP (Modal)')
                     ->money('IDR', locale: 'id')
                     ->placeholder('-')
+                    ->visible(fn () => auth()->user()?->hasRole('admin') ?? false)
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('gross_profit')
                     ->label('Laba Kotor')
+                    ->visible(fn () => auth()->user()?->hasRole('admin') ?? false)
                     ->state(function (Order $record) {
                         if ($record->cogs_total === null) {
                             return null;
@@ -108,34 +111,57 @@ class OrdersTable
                             ->required(),
                     ])
                     ->action(function (Order $record, array $data) {
-                        $shipping = (float) $data['shipping_cost'];
-                        $newTotal = (float) $record->subtotal + $shipping + (float) $record->other_cost;
+                        try {
+                            DB::transaction(function () use ($record, $data) {
+                                $lockedOrder = Order::where('id', $record->id)->lockForUpdate()->firstOrFail();
 
-                        $holdHours = (int) (Setting::get('payment_hold_hours', 12));
-                        $expiresAt = now()->addHours($holdHours);
+                                if ($lockedOrder->status !== OrderStatus::MENUNGGU_ONGKIR) {
+                                    throw new \RuntimeException('Status pesanan telah berubah.');
+                                }
 
-                        // Generate invoice_no
-                        $invoiceNo = 'INV/'.now()->format('Y/m').'/'.str_pad($record->id, 5, '0', STR_PAD_LEFT);
+                                $hasActiveRes = StockReservation::where('order_id', $lockedOrder->id)
+                                    ->where('status', ReservationStatus::ACTIVE)
+                                    ->exists();
 
-                        $record->update([
-                            'shipping_cost' => $shipping,
-                            'total' => $newTotal,
-                            'status' => OrderStatus::PENDING_PAYMENT,
-                            'invoice_no' => $invoiceNo,
-                            'invoiced_at' => now(),
-                            'expires_at' => $expiresAt,
-                        ]);
+                                if (! $hasActiveRes) {
+                                    throw new \RuntimeException('Masa tahan (hold) pesanan ini telah kedaluwarsa.');
+                                }
 
-                        // Perpanjang masa hold di stock_reservations
-                        StockReservation::where('order_id', $record->id)
-                            ->where('status', ReservationStatus::ACTIVE)
-                            ->update(['expires_at' => $expiresAt]);
+                                $shipping = (float) $data['shipping_cost'];
+                                $newTotal = (float) $lockedOrder->subtotal + $shipping + (float) $lockedOrder->other_cost;
 
-                        Notification::make()
-                            ->title('Invoice Diterbitkan')
-                            ->body("Invoice {$invoiceNo} diterbitkan dengan ongkir Rp ".number_format($shipping, 0, ',', '.'))
-                            ->success()
-                            ->send();
+                                $holdHours = (int) (Setting::get('payment_hold_hours', 12));
+                                $expiresAt = now()->addHours($holdHours);
+
+                                $invoiceNo = $lockedOrder->invoice_no ?: ('INV/'.now()->format('Y/m').'/'.str_pad($lockedOrder->id, 5, '0', STR_PAD_LEFT));
+
+                                $lockedOrder->update([
+                                    'shipping_cost' => $shipping,
+                                    'total' => $newTotal,
+                                    'status' => OrderStatus::PENDING_PAYMENT,
+                                    'invoice_no' => $invoiceNo,
+                                    'invoiced_at' => now(),
+                                    'expires_at' => $expiresAt,
+                                ]);
+
+                                // Perpanjang masa hold di stock_reservations
+                                StockReservation::where('order_id', $lockedOrder->id)
+                                    ->where('status', ReservationStatus::ACTIVE)
+                                    ->update(['expires_at' => $expiresAt]);
+                            });
+
+                            Notification::make()
+                                ->title('Invoice Diterbitkan')
+                                ->body('Ongkir berhasil disimpan dan status pesanan kini menunggu pembayaran.')
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('Gagal Memproses Ongkir')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
                     }),
 
                 // 2. Aksi Tolak Pesanan
@@ -143,7 +169,7 @@ class OrdersTable
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (Order $record) => $record->status === OrderStatus::MENUNGGU_ONGKIR)
+                    ->visible(fn (Order $record) => in_array($record->status, [OrderStatus::MENUNGGU_ONGKIR, OrderStatus::PENDING_PAYMENT]))
                     ->requiresConfirmation()
                     ->form([
                         Textarea::make('reject_reason')
@@ -151,20 +177,36 @@ class OrdersTable
                             ->required(),
                     ])
                     ->action(function (Order $record, array $data) {
-                        $reservationService = app(ReservationService::class);
-                        $reservationService->release($record->id, ReservationStatus::RELEASED);
+                        try {
+                            DB::transaction(function () use ($record, $data) {
+                                $lockedOrder = Order::where('id', $record->id)->lockForUpdate()->firstOrFail();
 
-                        $record->update([
-                            'status' => OrderStatus::REJECTED,
-                            'rejected_at' => now(),
-                            'reject_reason' => $data['reject_reason'],
-                        ]);
+                                if (! in_array($lockedOrder->status, [OrderStatus::MENUNGGU_ONGKIR, OrderStatus::PENDING_PAYMENT])) {
+                                    throw new \RuntimeException('Pesanan tidak dapat ditolak karena berstatus: '.$lockedOrder->status->label());
+                                }
 
-                        Notification::make()
-                            ->title('Pesanan Ditolak')
-                            ->body('Pesanan ditolak dan reservasi stok telah dilepaskan.')
-                            ->warning()
-                            ->send();
+                                $reservationService = app(ReservationService::class);
+                                $reservationService->release($lockedOrder->id, ReservationStatus::RELEASED);
+
+                                $lockedOrder->update([
+                                    'status' => OrderStatus::REJECTED,
+                                    'rejected_at' => now(),
+                                    'reject_reason' => $data['reject_reason'],
+                                ]);
+                            });
+
+                            Notification::make()
+                                ->title('Pesanan Ditolak')
+                                ->body('Pesanan ditolak dan reservasi stok telah dilepaskan.')
+                                ->warning()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('Gagal Menolak Pesanan')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
                     }),
 
                 // 3. Aksi Konfirmasi Pembayaran
@@ -174,20 +216,35 @@ class OrdersTable
                     ->color('success')
                     ->visible(fn (Order $record) => $record->status === OrderStatus::PENDING_PAYMENT)
                     ->requiresConfirmation()
-                    ->modalHeading('Konfirmasi Pembayaran Order')
-                    ->modalDescription('Apakah Anda yakin pembayaran telah valid? Tindakan ini akan memotong saldo stok fisik batch FIFO secara permanen dan mencatat HPP serta laba.')
+                    ->modalHeading('Verifikasi & Konfirmasi Pembayaran Order')
+                    ->modalContent(fn (Order $record) => view('filament.resources.orders.confirm-payment-modal', ['order' => $record->loadMissing('payments')]))
                     ->action(function (Order $record) {
-                        $reservationService = app(ReservationService::class);
-                        $reservationService->consume($record, auth()->id());
+                        try {
+                            $reservationService = app(ReservationService::class);
+                            $reservationService->consume($record, auth()->id());
 
-                        Notification::make()
-                            ->title('Pembayaran Dikonfirmasi')
-                            ->body('Stok FIFO telah dipotong dan HPP/Laba telah tercatat.')
-                            ->success()
-                            ->send();
+                            // Update status pembayaran yang diunggah
+                            $record->payments()
+                                ->where('status', PaymentStatus::PENDING)
+                                ->update([
+                                    'status' => PaymentStatus::PAID,
+                                    'confirmed_by' => auth()->id(),
+                                    'confirmed_at' => now(),
+                                ]);
+
+                            Notification::make()
+                                ->title('Pembayaran Dikonfirmasi')
+                                ->body('Stok FIFO telah dipotong dan HPP/Laba telah tercatat.')
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('Gagal Konfirmasi Pembayaran')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
                     }),
-
-                EditAction::make(),
             ]);
     }
 }

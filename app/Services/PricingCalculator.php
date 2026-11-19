@@ -36,31 +36,42 @@ class PricingCalculator
 
         // 1. Cek apakah ada harga khusus pelanggan langganan (customer_prices)
         if ($user) {
-            $customerPrice = CustomerPrice::where('user_id', $user->id)
+            $customerPrices = CustomerPrice::where('user_id', $user->id)
                 ->where('product_id', $product->id)
-                ->where('min_qty', '<=', $qtyBase)
                 ->where(function ($q) {
                     $q->whereNull('valid_from')->orWhere('valid_from', '<=', now()->toDateString());
                 })
                 ->with('unit')
-                ->orderBy('min_qty', 'desc')
-                ->first();
+                ->orderByDesc('valid_from')
+                ->orderByDesc('id')
+                ->get();
 
-            if ($customerPrice) {
-                $conversion = $customerPrice->unit ? $customerPrice->unit->conversion_to_base : 1;
-                $effectiveUnitPriceInBase = (float) $customerPrice->price / $conversion;
+            // Cari harga khusus yang memenuhi syarat min_qty (dikonversi ke satuan dasar)
+            $validCustomerPrice = null;
+            foreach ($customerPrices as $cp) {
+                $conversion = $cp->unit ? $cp->unit->conversion_to_base : 1;
+                $minBaseRequired = $cp->min_qty * $conversion;
+                if ($qtyBase >= $minBaseRequired) {
+                    $validCustomerPrice = $cp;
+                    break;
+                }
+            }
+
+            if ($validCustomerPrice) {
+                $conversion = $validCustomerPrice->unit ? $validCustomerPrice->unit->conversion_to_base : 1;
+                $effectiveUnitPriceInBase = (float) $validCustomerPrice->price / $conversion;
                 $totalPrice = round($effectiveUnitPriceInBase * $qtyBase, 2);
 
                 return [
                     'unit_price' => round($effectiveUnitPriceInBase, 2),
                     'total_price' => $totalPrice,
                     'price_source' => 'customer',
-                    'applied_tier' => 'Khusus Pelanggan ('.($customerPrice->unit?->unit_name ?? $product->base_unit).')',
+                    'applied_tier' => 'Khusus Pelanggan ('.($validCustomerPrice->unit?->unit_name ?? $product->base_unit).')',
                     'breakdown' => [
                         [
-                            'unit_name' => $customerPrice->unit?->unit_name ?? $product->base_unit,
+                            'unit_name' => $validCustomerPrice->unit?->unit_name ?? $product->base_unit,
                             'conversion' => $conversion,
-                            'price' => (float) $customerPrice->price,
+                            'price' => (float) $validCustomerPrice->price,
                             'qty_base' => $qtyBase,
                             'subtotal' => $totalPrice,
                         ],
@@ -75,6 +86,8 @@ class PricingCalculator
                 $q->whereNull('valid_from')->orWhere('valid_from', '<=', now()->toDateString());
             })
             ->with('unit')
+            ->orderByDesc('valid_from')
+            ->orderByDesc('id')
             ->get();
 
         if ($prices->isEmpty()) {
@@ -90,8 +103,16 @@ class PricingCalculator
         // 3. Algoritma pemecahan satuan terbesar dan pencarian kombinasi termurah
         // Hitung biaya per satuan dasar untuk setiap opsi tier
         $tierOptions = [];
+        $seenTiers = [];
+
         foreach ($prices as $p) {
             $conversion = $p->unit ? $p->unit->conversion_to_base : 1;
+            $tierKey = ($p->unit_id ?? 'base').'_'.$p->min_qty;
+            if (isset($seenTiers[$tierKey])) {
+                continue; // Gunakan baris valid_from terbaru yang pertama ditemui
+            }
+            $seenTiers[$tierKey] = true;
+
             $minBaseQty = $p->min_qty * $conversion;
             $pricePerBaseUnit = (float) $p->price / $conversion;
 
@@ -116,7 +137,7 @@ class PricingCalculator
             return $b['conversion'] <=> $a['conversion'];
         });
 
-        // Opsi A: Greedy dari satuan terbesar yang memenuhi min_qty
+        // Pemecahan kuantitas eksak (greedy dari satuan terbesar yang memenuhi min_qty)
         $remaining = $qtyBase;
         $greedyBreakdown = [];
         $greedyTotal = 0.0;
@@ -148,10 +169,8 @@ class PricingCalculator
             }
         }
 
-        // Jika masih ada sisa yang belum ter-cover (misal sisa ecer di bawah min_qty tier grosir),
-        // gunakan tier ecer/satuan terkecil
+        // Jika masih ada sisa yang belum ter-cover, gunakan tier ecer/satuan dasar
         if ($remaining > 0) {
-            // Cari tier dengan satuan dasar (conversion = 1) atau harga per base terendah yang valid
             $baseTier = null;
             foreach ($tierOptions as $opt) {
                 if ($opt['conversion'] === 1 && $remaining >= $opt['min_qty']) {
@@ -161,7 +180,6 @@ class PricingCalculator
             }
 
             if (! $baseTier) {
-                // Ambil tier terkecil yang ada
                 $baseTier = end($tierOptions);
             }
 
@@ -178,12 +196,11 @@ class PricingCalculator
             $greedyTotal += $subtotal;
         }
 
-        // Opsi B: Periksa apakah membeli dengan tier satuan lebih besar secara pembulatan ke atas lebih murah
-        // (contoh: beli 11 pcs ecer @15rb = 165rb vs 1 pack isi 12 pcs @150rb)
+        $bestTierName = $greedyBreakdown[0]['tier_name'] ?? 'Standar';
         $bestTotal = $greedyTotal;
         $bestBreakdown = $greedyBreakdown;
-        $bestTierName = $greedyBreakdown[0]['tier_name'] ?? 'Standar';
 
+        // Periksa apakah mengambil paket satuan di atasnya lebih hemat (misal beli 11 pcs ecer 165rb vs 1 pack 150rb)
         foreach ($tierOptions as $opt) {
             if ($opt['conversion'] > 1) {
                 $roundedUpUnits = (int) ceil($qtyBase / $opt['conversion']);
@@ -198,7 +215,7 @@ class PricingCalculator
                                 'unit_name' => $opt['unit_name'],
                                 'units_count' => $roundedUpUnits,
                                 'conversion' => $opt['conversion'],
-                                'qty_base' => $roundedUpUnits * $opt['conversion'],
+                                'qty_base' => $qtyBase, // Kuantitas fisik tetap sesuai yang dipesan
                                 'unit_price' => $opt['price_per_unit'],
                                 'subtotal' => $bulkTotal,
                             ],

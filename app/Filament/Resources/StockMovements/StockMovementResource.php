@@ -7,17 +7,27 @@ use App\Filament\Resources\StockMovements\Tables\StockMovementsTable;
 use App\Models\StockMovement;
 use BackedEnum;
 use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class StockMovementResource extends Resource
 {
     protected static ?string $model = StockMovement::class;
 
-    protected static ?string $navigationLabel = 'Buku Mutasi Stok (Ledger)';
+    protected static ?string $navigationLabel = 'Jejak Stok';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
+    protected static ?string $modelLabel = 'Mutasi Stok';
+
+    protected static ?string $pluralModelLabel = 'Jejak Stok';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Gudang';
+
+    protected static ?int $navigationSort = 2;
+
+    protected static string|BackedEnum|null $navigationIcon = 'phosphor-clock-counter-clockwise-duotone';
+
+    protected static string|BackedEnum|null $activeNavigationIcon = 'phosphor-clock-counter-clockwise-fill';
 
     public static function table(Table $table): Table
     {

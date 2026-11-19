@@ -11,13 +11,27 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 
 test('uji konkurensi: dua proses menjual 10 dari stok 10 bersamaan, tepat satu berhasil dan stok tidak minus', function () {
+    $dbHost = env('DB_TEST_HOST') ?: (env('DB_HOST') ?: '127.0.0.1');
+    $dbPort = env('DB_TEST_PORT') ?: (env('DB_PORT') ?: '5432');
+    $dbName = env('DB_TEST_DATABASE') ?: (config('database.connections.pgsql.database') && config('database.connections.pgsql.database') !== ':memory:' ? config('database.connections.pgsql.database') : 'stok_gudang');
+    $dbUser = env('DB_TEST_USERNAME') ?: (config('database.connections.pgsql.username') && config('database.connections.pgsql.username') !== ':memory:' ? config('database.connections.pgsql.username') : 'postgres');
+    $dbPass = env('DB_TEST_PASSWORD') ?: (config('database.connections.pgsql.password') ?: 'qkz899mv24');
+
     config([
         'database.default' => 'pgsql',
-        'database.connections.pgsql.database' => 'stok_gudang',
-        'database.connections.pgsql.username' => 'postgres',
-        'database.connections.pgsql.password' => 'qkz899mv24',
+        'database.connections.pgsql.host' => $dbHost,
+        'database.connections.pgsql.port' => $dbPort,
+        'database.connections.pgsql.database' => $dbName,
+        'database.connections.pgsql.username' => $dbUser,
+        'database.connections.pgsql.password' => $dbPass,
     ]);
     DB::purge('pgsql');
+
+    try {
+        DB::connection('pgsql')->getPdo();
+    } catch (Throwable $e) {
+        $this->markTestSkipped('Koneksi PostgreSQL untuk uji konkurensi tidak tersedia: '.$e->getMessage());
+    }
 
     $stockService = app(StockService::class);
 
@@ -50,9 +64,11 @@ test('uji konkurensi: dua proses menjual 10 dari stok 10 bersamaan, tepat satu b
     $basePath = base_path();
     $env = [
         'DB_CONNECTION' => 'pgsql',
-        'DB_DATABASE' => 'stok_gudang',
-        'DB_USERNAME' => 'postgres',
-        'DB_PASSWORD' => 'qkz899mv24',
+        'DB_HOST' => $dbHost,
+        'DB_PORT' => $dbPort,
+        'DB_DATABASE' => $dbName,
+        'DB_USERNAME' => $dbUser,
+        'DB_PASSWORD' => $dbPass,
     ];
 
     $pool = Process::pool(function ($pool) use ($product, $warehouse, $basePath, $env) {

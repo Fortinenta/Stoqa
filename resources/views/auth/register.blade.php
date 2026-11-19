@@ -24,7 +24,7 @@
                     value="{{ old('name') }}"
                     required
                     autofocus
-                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-stoqa-500/20 focus:border-stoqa-500 transition"
                     placeholder="Contoh: Toko Berkah / Budi"
                 >
             </div>
@@ -36,7 +36,7 @@
                     name="email"
                     value="{{ old('email') }}"
                     required
-                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-stoqa-500/20 focus:border-stoqa-500 transition"
                     placeholder="nama@email.com"
                 >
             </div>
@@ -48,18 +48,18 @@
                     name="phone"
                     value="{{ old('phone') }}"
                     required
-                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-stoqa-500/20 focus:border-stoqa-500 transition"
                     placeholder="081234567890"
                 >
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Kata Sandi (Min. 6 Karakter) <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Kata Sandi (Min. 8 Karakter, Huruf & Angka) <span class="text-rose-500">*</span></label>
                 <input
                     type="password"
                     name="password"
                     required
-                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-stoqa-500/20 focus:border-stoqa-500 transition"
                     placeholder="••••••••"
                 >
             </div>
@@ -70,14 +70,14 @@
                     type="password"
                     name="password_confirmation"
                     required
-                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                    class="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-stoqa-500/20 focus:border-stoqa-500 transition"
                     placeholder="••••••••"
                 >
             </div>
 
             <button
                 type="submit"
-                class="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm tracking-wide transition shadow-lg shadow-blue-500/20"
+                class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-stoqa-600 to-stoqa-500 hover:from-stoqa-700 hover:to-stoqa-600 text-white font-extrabold text-xs sm:text-sm tracking-wide transition shadow-sm hover:shadow-md transform active:scale-98"
             >
                 Daftar Akun
             </button>

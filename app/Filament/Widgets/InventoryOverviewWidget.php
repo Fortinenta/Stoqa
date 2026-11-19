@@ -23,6 +23,8 @@ class InventoryOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
+        $isAdmin = auth()->user()?->hasRole('admin') ?? false;
+
         // 1. Total Nilai & Kuantitas Persediaan Gudang (Landed Cost FIFO)
         $inventoryQuery = StockBatch::where('qty_remaining', '>', 0);
         $inventoryValue = (float) ($inventoryQuery->clone()
@@ -30,23 +32,28 @@ class InventoryOverviewWidget extends BaseWidget
             ->value('total_value') ?? 0);
         $totalPhysicalUnits = (int) ($inventoryQuery->clone()->sum('qty_remaining') ?? 0);
 
-        // 2. Total Penjualan & Laba Kotor Bulan Ini
+        // 2. Total Penjualan & Laba Kotor Bulan Ini (Hanya dihitung untuk Admin)
         $startOfMonth = now()->startOfMonth();
-        $monthlyOrders = Order::whereIn('status', [OrderStatus::PAID, OrderStatus::COMPLETED, OrderStatus::SHIPPED])
-            ->where(function ($query) use ($startOfMonth) {
-                $query->where('paid_at', '>=', $startOfMonth)
-                    ->orWhere(function ($q) use ($startOfMonth) {
-                        $q->whereNull('paid_at')->where('created_at', '>=', $startOfMonth);
-                    });
-            })
-            ->get();
+        $monthlyRevenue = 0.0;
+        $monthlyGrossProfit = 0.0;
 
-        $monthlyRevenue = (float) $monthlyOrders->sum('subtotal');
-        $monthlyGrossProfit = (float) $monthlyOrders->sum(function ($order) {
-            $cogs = (float) ($order->cogs_total ?? 0);
+        if ($isAdmin) {
+            $monthlyOrders = Order::whereIn('status', [OrderStatus::PAID, OrderStatus::COMPLETED, OrderStatus::SHIPPED])
+                ->where(function ($query) use ($startOfMonth) {
+                    $query->where('paid_at', '>=', $startOfMonth)
+                        ->orWhere(function ($q) use ($startOfMonth) {
+                            $q->whereNull('paid_at')->where('created_at', '>=', $startOfMonth);
+                        });
+                })
+                ->get();
 
-            return (float) $order->subtotal - $cogs;
-        });
+            $monthlyRevenue = (float) $monthlyOrders->sum('subtotal');
+            $monthlyGrossProfit = (float) $monthlyOrders->sum(function ($order) {
+                $cogs = (float) ($order->cogs_total ?? 0);
+
+                return (float) $order->subtotal - $cogs;
+            });
+        }
 
         // 3. Stok Tertahan (Di-Hold) oleh Pesanan Aktif
         $activeHoldUnits = (int) (StockReservation::where('status', ReservationStatus::ACTIVE)->sum('qty_base') ?? 0);
@@ -66,6 +73,36 @@ class InventoryOverviewWidget extends BaseWidget
             if ($available <= $p->min_stock) {
                 $lowStockCount++;
             }
+        }
+
+        // Jika bukan admin (staf gudang), sembunyikan nilai uang (HPP & Laba) demi keamanan data modal
+        if (! $isAdmin) {
+            return [
+                Stat::make('Total Unit Fisik', number_format($totalPhysicalUnits, 0, ',', '.').' Unit')
+                    ->description('Total stok di seluruh batch gudang')
+                    ->descriptionIcon('heroicon-m-cube')
+                    ->color('primary'),
+
+                Stat::make('Total Produk Aktif', number_format($products->count(), 0, ',', '.').' Produk')
+                    ->description('Katalog terdaftar aktif')
+                    ->descriptionIcon('heroicon-m-tag')
+                    ->color('info'),
+
+                Stat::make('Stok Tertahan (Hold)', number_format($activeHoldUnits, 0, ',', '.').' Unit')
+                    ->description("Dari {$activeHoldOrders} pesanan aktif")
+                    ->descriptionIcon('heroicon-m-lock-closed')
+                    ->color($activeHoldUnits > 0 ? 'info' : 'gray'),
+
+                Stat::make('Perlu Tindakan', $pendingActionCount.' Pesanan')
+                    ->description('Menunggu ongkir & bayar')
+                    ->descriptionIcon('heroicon-m-clock')
+                    ->color($pendingActionCount > 0 ? 'warning' : 'gray'),
+
+                Stat::make('Peringatan Stok', $lowStockCount.' Produk')
+                    ->description('Stok ≤ Ambang batas')
+                    ->descriptionIcon('heroicon-m-exclamation-triangle')
+                    ->color($lowStockCount > 0 ? 'danger' : 'success'),
+            ];
         }
 
         // 7-day sparkline sample data for visual polish

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Web Routes - MySto (Katalog, Keranjang, Checkout, & Pesanan)
+| Web Routes - Stoqa (Katalog, Keranjang, Checkout, & Pesanan)
 |--------------------------------------------------------------------------
 */
 

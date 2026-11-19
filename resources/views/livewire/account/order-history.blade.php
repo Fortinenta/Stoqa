@@ -129,13 +129,39 @@
                             @endif
                         </div>
 
-                        <div class="flex items-center justify-between sm:justify-end gap-4">
+                        <div class="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Total Tagihan</span>
                                 <span class="text-base font-black text-slate-900">
                                     Rp {{ number_format($order->total, 0, ',', '.') }}
                                 </span>
                             </div>
+
+                            @php
+                                $pendingPayment = $order->payments->where('status', \App\Enums\PaymentStatus::PENDING)->last();
+                            @endphp
+
+                            @if ($order->status === \App\Enums\OrderStatus::PENDING_PAYMENT)
+                                @if ($pendingPayment)
+                                    <button
+                                        type="button"
+                                        wire:click="openPaymentModal({{ $order->id }})"
+                                        class="text-xs px-3.5 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-300 font-bold hover:bg-amber-100 transition flex items-center gap-1.5 shadow-xs"
+                                    >
+                                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>Bukti Terkirim (Ubah)</span>
+                                    </button>
+                                @else
+                                    <button
+                                        type="button"
+                                        wire:click="openPaymentModal({{ $order->id }})"
+                                        class="text-xs px-4 py-2 rounded-xl bg-gradient-to-r from-stoqa-600 to-stoqa-500 hover:from-stoqa-700 hover:to-stoqa-600 text-white font-extrabold transition shadow-sm hover:shadow flex items-center gap-1.5 transform active:scale-95"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                        <span>Bayar Sekarang</span>
+                                    </button>
+                                @endif
+                            @endif
 
                             @if (in_array($order->status, [\App\Enums\OrderStatus::MENUNGGU_ONGKIR, \App\Enums\OrderStatus::PENDING_PAYMENT]))
                                 <button
@@ -154,6 +180,203 @@
 
             <div class="pt-4">
                 {{ $orders->links() }}
+            </div>
+        </div>
+    @endif
+
+    <!-- Modal Pembayaran & Unggah Bukti Transfer Manual -->
+    @if ($showPaymentModal && $payingOrder)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" wire:click="closePaymentModal"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl border border-slate-200">
+                    <!-- Modal Header -->
+                    <div class="bg-gradient-to-r from-stoqa-800 to-stoqa-700 px-6 py-5 text-white flex items-center justify-between">
+                        <div>
+                            <span class="text-[11px] font-bold text-sand-500 uppercase tracking-wider block">Instruksi Pembayaran</span>
+                            <h3 class="text-lg font-black text-white" id="modal-title">
+                                {{ $payingOrder->invoice_no ?? ('Order #' . $payingOrder->id) }}
+                            </h3>
+                        </div>
+                        <button type="button" wire:click="closePaymentModal" class="rounded-xl p-1.5 text-white/80 hover:bg-white/10 hover:text-white transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="px-6 py-5 space-y-6 max-h-[80vh] overflow-y-auto">
+                        <!-- Rincian Total Tagihan -->
+                        <div class="p-4 rounded-2xl bg-stoqa-50/70 border border-stoqa-200/80 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs text-slate-500 block font-semibold">Total yang Wajib Ditransfer:</span>
+                                <div class="text-2xl font-black text-stoqa-800">
+                                    Rp {{ number_format($payingOrder->total, 0, ',', '.') }}
+                                </div>
+                                <span class="text-[11px] text-slate-400">
+                                    (Subtotal: Rp {{ number_format($payingOrder->subtotal, 0, ',', '.') }} + Ongkir: Rp {{ number_format($payingOrder->shipping_cost, 0, ',', '.') }})
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 block">
+                                    Tenggat 12 Jam
+                                </span>
+                                @if ($payingOrder->expires_at)
+                                    <span class="text-[10px] text-slate-400 mt-1 block">
+                                        s.d {{ $payingOrder->expires_at->format('H:i') }} WIB
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Pilihan Metode Transfer Bank Manual -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pilih Rekening Tujuan Transfer</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <!-- BCA -->
+                                <label class="cursor-pointer border rounded-2xl p-3 flex flex-col justify-between transition {{ $paymentMethod === 'manual_bca' ? 'border-stoqa-600 bg-stoqa-50/60 shadow-xs' : 'border-slate-200 hover:border-slate-300' }}">
+                                    <input type="radio" wire:model.live="paymentMethod" value="manual_bca" class="sr-only">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-extrabold text-sm text-blue-800">Bank BCA</span>
+                                        <div class="w-3.5 h-3.5 rounded-full border-2 {{ $paymentMethod === 'manual_bca' ? 'border-stoqa-600 bg-stoqa-600' : 'border-slate-300' }}"></div>
+                                    </div>
+                                    <span class="text-[11px] text-slate-500 mt-2 font-mono">872-098-1122</span>
+                                </label>
+
+                                <!-- Mandiri -->
+                                <label class="cursor-pointer border rounded-2xl p-3 flex flex-col justify-between transition {{ $paymentMethod === 'manual_mandiri' ? 'border-stoqa-600 bg-stoqa-50/60 shadow-xs' : 'border-slate-200 hover:border-slate-300' }}">
+                                    <input type="radio" wire:model.live="paymentMethod" value="manual_mandiri" class="sr-only">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-extrabold text-sm text-amber-800">Bank Mandiri</span>
+                                        <div class="w-3.5 h-3.5 rounded-full border-2 {{ $paymentMethod === 'manual_mandiri' ? 'border-stoqa-600 bg-stoqa-600' : 'border-slate-300' }}"></div>
+                                    </div>
+                                    <span class="text-[11px] text-slate-500 mt-2 font-mono">133-00-1928-3344</span>
+                                </label>
+
+                                <!-- BRI -->
+                                <label class="cursor-pointer border rounded-2xl p-3 flex flex-col justify-between transition {{ $paymentMethod === 'manual_bri' ? 'border-stoqa-600 bg-stoqa-50/60 shadow-xs' : 'border-slate-200 hover:border-slate-300' }}">
+                                    <input type="radio" wire:model.live="paymentMethod" value="manual_bri" class="sr-only">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-extrabold text-sm text-blue-900">Bank BRI</span>
+                                        <div class="w-3.5 h-3.5 rounded-full border-2 {{ $paymentMethod === 'manual_bri' ? 'border-stoqa-600 bg-stoqa-600' : 'border-slate-300' }}"></div>
+                                    </div>
+                                    <span class="text-[11px] text-slate-500 mt-2 font-mono">0206-01-002233-50</span>
+                                </label>
+                            </div>
+
+                            <!-- Detail Rekening yang Dipilih -->
+                            <div class="mt-3 p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs" x-data="{ copied: false }">
+                                <div>
+                                    <span class="text-slate-400 font-medium">Atas Nama:</span>
+                                    <strong class="text-slate-800 block text-sm font-bold">PT Stoqa Niaga Indonesia</strong>
+                                    <span class="text-slate-400 font-medium mt-1 inline-block">Nomor Rekening:</span>
+                                    <span class="font-mono font-black text-sm text-slate-900 block">
+                                        @if ($paymentMethod === 'manual_bca')
+                                            8720981122
+                                        @elseif ($paymentMethod === 'manual_mandiri')
+                                            1330019283344
+                                        @else
+                                            020601002233501
+                                        @endif
+                                    </span>
+                                </div>
+                                <div>
+                                    <button
+                                        type="button"
+                                        @click="
+                                            navigator.clipboard.writeText(
+                                                '{{ $paymentMethod === 'manual_bca' ? '8720981122' : ($paymentMethod === 'manual_mandiri' ? '1330019283344' : '020601002233501') }}'
+                                            );
+                                            copied = true;
+                                            setTimeout(() => copied = false, 2500);
+                                        "
+                                        class="px-4 py-2 rounded-xl bg-white border border-slate-300 hover:border-stoqa-500 text-slate-700 font-bold transition flex items-center gap-1.5 shadow-xs"
+                                    >
+                                        <svg x-show="!copied" class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                                        <svg x-show="copied" x-cloak class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                        <span x-text="copied ? 'Tersalin!' : 'Salin No. Rekening'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Bukti Pembayaran -->
+                        <form wire:submit="submitPayment" class="space-y-4 pt-2 border-t border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Konfirmasi & Unggah Bukti Struk Transfer</h4>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Bank Asal Anda <span class="text-rose-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        wire:model="senderBank"
+                                        placeholder="Contoh: BCA, Mandiri, BRI, SeaBank"
+                                        class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-stoqa-500 focus:ring-2 focus:ring-stoqa-100 outline-none"
+                                    >
+                                    @error('senderBank') <span class="text-rose-600 text-[11px]">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Nama Pemilik Rekening <span class="text-rose-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        wire:model="senderName"
+                                        placeholder="Nama yang tertera di rekening pengirim"
+                                        class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-stoqa-500 focus:ring-2 focus:ring-stoqa-100 outline-none"
+                                    >
+                                    @error('senderName') <span class="text-rose-600 text-[11px]">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Foto Bukti / Struk Transfer (Maks. 3MB) <span class="text-rose-500">*</span></label>
+                                <input
+                                    type="file"
+                                    wire:model="proofFile"
+                                    accept="image/*"
+                                    class="w-full text-xs file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-stoqa-50 file:text-stoqa-700 hover:file:bg-stoqa-100 cursor-pointer border border-slate-300 rounded-xl p-1"
+                                >
+                                @error('proofFile') <span class="text-rose-600 text-[11px] block mt-1">{{ $message }}</span> @enderror
+
+                                <!-- Preview Gambar -->
+                                @if ($proofFile)
+                                    <div class="mt-2 p-2 rounded-xl border border-slate-200 bg-slate-50 inline-block">
+                                        <span class="text-[10px] text-slate-500 block mb-1 font-semibold">Preview Bukti:</span>
+                                        <img src="{{ $proofFile->temporaryUrl() }}" class="h-28 w-auto rounded-lg object-contain">
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+                                <input
+                                    type="text"
+                                    wire:model="paymentNotes"
+                                    placeholder="Contoh: Transfer via m-banking jam 14:30"
+                                    class="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-300 focus:border-stoqa-500 focus:ring-2 focus:ring-stoqa-100 outline-none"
+                                >
+                            </div>
+
+                            <div class="pt-3 flex items-center justify-end gap-3">
+                                <button
+                                    type="button"
+                                    wire:click="closePaymentModal"
+                                    class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    wire:loading.attr="disabled"
+                                    class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-stoqa-600 to-stoqa-500 hover:from-stoqa-700 hover:to-stoqa-600 text-white text-xs font-extrabold shadow-sm hover:shadow transition flex items-center gap-2"
+                                >
+                                    <span wire:loading.remove>Kirim Bukti Pembayaran</span>
+                                    <span wire:loading>Mengunggah...</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     @endif

@@ -49,6 +49,7 @@ class CreateOrder extends CreateRecord
             $total = $subtotal + $shipping + $other;
 
             $data['status'] = OrderStatus::PAID;
+            $data['payment_status'] = 'paid';
             $data['subtotal'] = $subtotal;
             $data['total'] = $total;
             $data['paid_at'] = now();
@@ -73,7 +74,7 @@ class CreateOrder extends CreateRecord
                     'line_total' => $prep['line_total'],
                     'price_source' => 'manual',
                 ]);
-                $createdOrderItems[$prep['product_id']] = $orderItem;
+                $createdOrderItems[] = $orderItem;
                 $fifoItems[] = [
                     'product_id' => $prep['product_id'],
                     'qty_base' => $prep['qty_base'],
@@ -92,8 +93,11 @@ class CreateOrder extends CreateRecord
             );
 
             // Simpan rincian alokasi batch dan HPP
-            foreach ($createdOrderItems as $prodId => $orderItem) {
-                $alloc = $fulfillment['allocations'][$prodId] ?? null;
+            foreach ($createdOrderItems as $orderItem) {
+                $alloc = $fulfillment['allocations']["item_{$orderItem->id}"]
+                    ?? $fulfillment['allocations'][$orderItem->product_id]
+                    ?? null;
+
                 if ($alloc) {
                     $orderItem->update(['cogs_total' => $alloc['cogs']]);
                     foreach ($alloc['batches'] as $batchAlloc) {

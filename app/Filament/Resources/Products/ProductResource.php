@@ -11,16 +11,28 @@ use App\Models\Product;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use UnitEnum;
 
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static ?string $navigationLabel = 'Etalase Barang';
+
+    protected static ?string $modelLabel = 'Barang';
+
+    protected static ?string $pluralModelLabel = 'Etalase Barang';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Etalase';
+
+    protected static ?int $navigationSort = 1;
+
+    protected static string|BackedEnum|null $navigationIcon = 'phosphor-storefront-duotone';
+
+    protected static string|BackedEnum|null $activeNavigationIcon = 'phosphor-storefront-fill';
 
     protected static ?string $recordTitleAttribute = 'name';
 

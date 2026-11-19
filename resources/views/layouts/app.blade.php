@@ -16,50 +16,51 @@
 
     @livewireStyles
 </head>
-<body class="flex flex-col min-h-screen text-slate-800 antialiased font-sans pb-16 md:pb-0">
+<body class="flex flex-col min-h-screen text-slate-800 antialiased font-sans pb-16 md:pb-0" style="background: radial-gradient(1100px 480px at -5% -12%, rgba(130, 211, 201, 0.20), transparent 60%), radial-gradient(800px 380px at 105% -5%, rgba(244, 184, 96, 0.12), transparent 55%), #F6F8F7; background-attachment: fixed;">
 
     <!-- Header & Navigation -->
-    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
+    <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo & Brand -->
                 <div class="flex items-center gap-3">
-                    <a href="{{ url('/') }}" wire:navigate class="flex items-center gap-2 group">
+                    <a href="{{ url('/') }}" wire:navigate class="flex items-center gap-2 group transition transform hover:scale-[1.02]">
                         <img src="{{ asset('images/stoqa-logo.svg') }}" alt="Stoqa Logo" class="h-8 w-auto">
                     </a>
                 </div>
 
                 <!-- Desktop Nav -->
                 <nav class="hidden md:flex items-center gap-6">
-                    <a href="{{ url('/') }}" wire:navigate class="text-sm font-semibold {{ request()->is('/') ? 'text-stoqa-600 font-bold' : 'text-slate-600 hover:text-stoqa-600' }}">
+                    <a href="{{ url('/') }}" wire:navigate class="text-sm font-semibold {{ request()->is('/') ? 'text-stoqa-600 font-extrabold border-b-2 border-stoqa-600 pb-0.5' : 'text-slate-600 hover:text-stoqa-600 transition' }}">
                         Katalog Produk
                     </a>
-                    <a href="{{ url('/keranjang') }}" wire:navigate class="text-sm font-semibold {{ request()->is('keranjang') ? 'text-stoqa-600 font-bold' : 'text-slate-600 hover:text-stoqa-600' }} flex items-center gap-1.5">
+                    <a href="{{ url('/keranjang') }}" wire:navigate class="text-sm font-semibold {{ request()->is('keranjang') ? 'text-stoqa-600 font-extrabold border-b-2 border-stoqa-600 pb-0.5' : 'text-slate-600 hover:text-stoqa-600 transition' }} flex items-center gap-1.5">
                         <span>Keranjang</span>
-                        <span class="px-2 py-0.5 text-xs rounded-full bg-stoqa-100 text-stoqa-700 font-bold">
+                        <span class="px-2 py-0.5 text-xs rounded-full bg-stoqa-100 text-stoqa-700 font-bold border border-stoqa-200">
                             {{ app(\App\Services\CartService::class)->count() }}
                         </span>
                     </a>
                     @auth
-                        <a href="{{ url('/pesanan-saya') }}" wire:navigate class="text-sm font-semibold {{ request()->is('pesanan-saya*') ? 'text-stoqa-600 font-bold' : 'text-slate-600 hover:text-stoqa-600' }}">
+                        <a href="{{ url('/pesanan-saya') }}" wire:navigate class="text-sm font-semibold {{ request()->is('pesanan-saya*') ? 'text-stoqa-600 font-extrabold border-b-2 border-stoqa-600 pb-0.5' : 'text-slate-600 hover:text-stoqa-600 transition' }}">
                             Pesanan Saya
                         </a>
                         @role('admin|staf_gudang')
-                            <a href="{{ url('/admin') }}" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-sand-100 text-sand-800 hover:bg-sand-500/30 transition">
-                                Panel Admin
+                            <a href="{{ url('/admin') }}" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-sand-100 text-sand-800 border border-sand-500/30 hover:bg-sand-500/20 transition flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <span>Panel Manajemen</span>
                             </a>
                         @endrole
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
-                            <button type="submit" class="text-sm font-medium text-rose-600 hover:text-rose-700">
+                            <button type="submit" class="text-sm font-medium text-rose-600 hover:text-rose-700 transition">
                                 Keluar
                             </button>
                         </form>
                     @else
-                        <a href="{{ route('login') }}" class="text-sm font-semibold text-slate-700 hover:text-stoqa-600">
+                        <a href="{{ route('login') }}" class="text-sm font-semibold text-slate-700 hover:text-stoqa-600 transition">
                             Masuk
                         </a>
-                        <a href="{{ route('register') }}" class="text-sm font-semibold px-4 py-2 rounded-xl bg-stoqa-600 hover:bg-stoqa-700 text-white shadow-sm transition">
+                        <a href="{{ route('register') }}" class="text-sm font-bold px-4 py-2 rounded-xl bg-stoqa-600 hover:bg-stoqa-700 text-white shadow-sm hover:shadow transition transform active:scale-95">
                             Daftar Akun
                         </a>
                     @endauth
@@ -77,7 +78,7 @@
                     </a>
 
                     @auth
-                        <a href="{{ url('/akun') }}" wire:navigate class="w-8 h-8 rounded-full bg-stoqa-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+                        <a href="{{ url('/akun') }}" wire:navigate class="w-8 h-8 rounded-full bg-stoqa-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
                             {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                         </a>
                     @else
@@ -117,6 +118,29 @@
         {{ $slot ?? '' }}
         @yield('content')
     </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-slate-200/80 bg-white/60 backdrop-blur-md py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+                <div class="flex items-center gap-2">
+                    <img src="{{ asset('images/stoqa-icon.svg') }}" alt="Stoqa Icon" class="h-5 w-auto">
+                    <span class="font-bold text-slate-700">Stoqa</span>
+                    <span>&copy; {{ date('Y') }} Platform Kulakan & Inventaris Multi-Satuan.</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="inline-flex items-center gap-1.5 text-stoqa-700 font-semibold">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        Stok FIFO Akurat Real-time
+                    </span>
+                    <span>•</span>
+                    <span>Batas Ongkir 3 Jam</span>
+                    <span>•</span>
+                    <span>Batas Bayar 12 Jam</span>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <!-- Mobile Bottom Navigation Bar (4 Menu Responsif) -->
     <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 flex items-center justify-around h-15 pb-safe">

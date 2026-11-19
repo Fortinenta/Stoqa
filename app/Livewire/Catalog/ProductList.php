@@ -38,10 +38,9 @@ class ProductList extends Component
             ->with(['category', 'units', 'prices.unit', 'stockLevels'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
-                    $q->where('name', 'ilike', '%'.$this->search.'%')
-                        ->orWhere('sku', 'ilike', '%'.$this->search.'%')
-                        ->orWhere('name', 'like', '%'.$this->search.'%')
-                        ->orWhere('sku', 'like', '%'.$this->search.'%');
+                    $searchTerm = '%'.strtolower($this->search).'%';
+                    $q->whereRaw('LOWER(name) LIKE ?', [$searchTerm])
+                        ->orWhereRaw('LOWER(sku) LIKE ?', [$searchTerm]);
                 });
             })
             ->when($this->category_id, function ($query) {
