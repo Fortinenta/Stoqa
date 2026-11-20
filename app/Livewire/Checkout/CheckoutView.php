@@ -118,7 +118,7 @@ class CheckoutView extends Component
                     // Buat OrderItem per pecahan unit agar qty × unit_conversion × unit_price = line_total
                     foreach ($breakdowns as $b) {
                         $lineBaseQty = (int) $b['qty_base'];
-                        $lineTotal = round($lineBaseQty * (float) $item['unit_price'], 2);
+                        $lineTotal = round($lineBaseQty * (float) $item['unit_price'], 0);
 
                         OrderItem::create([
                             'order_id' => $order->id,

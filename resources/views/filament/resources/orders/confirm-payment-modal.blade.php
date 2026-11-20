@@ -57,8 +57,8 @@
             <!-- Preview Gambar Bukti Struk -->
             <div class="pt-2">
                 <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1.5">Foto Struk / Tangkapan Layar:</span>
-                <a href="{{ asset('storage/' . $latestPayment->proof_url) }}" target="_blank" class="block group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 max-w-xs hover:border-blue-500 transition">
-                    <img src="{{ asset('storage/' . $latestPayment->proof_url) }}" alt="Bukti Transfer" class="w-full max-h-56 object-contain bg-slate-100 dark:bg-slate-900">
+                <a href="{{ route('payment.proof.show', ['order' => $order->id, 'payment' => $latestPayment->id]) }}" target="_blank" class="block group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 max-w-xs hover:border-blue-500 transition">
+                    <img src="{{ route('payment.proof.show', ['order' => $order->id, 'payment' => $latestPayment->id]) }}" alt="Bukti Transfer" class="w-full max-h-56 object-contain bg-slate-100 dark:bg-slate-900">
                     <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs">
                         Buka Gambar Penuh ↗
                     </div>

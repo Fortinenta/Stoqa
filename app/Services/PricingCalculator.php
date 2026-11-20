@@ -60,7 +60,7 @@ class PricingCalculator
             if ($validCustomerPrice) {
                 $conversion = $validCustomerPrice->unit ? $validCustomerPrice->unit->conversion_to_base : 1;
                 $effectiveUnitPriceInBase = (float) $validCustomerPrice->price / $conversion;
-                $totalPrice = round($effectiveUnitPriceInBase * $qtyBase, 2);
+                $totalPrice = round($effectiveUnitPriceInBase * $qtyBase, 0);
 
                 return [
                     'unit_price' => round($effectiveUnitPriceInBase, 2),
@@ -191,13 +191,13 @@ class PricingCalculator
                 'conversion' => 1,
                 'qty_base' => $remaining,
                 'unit_price' => $baseTier['price_per_base'],
-                'subtotal' => round($subtotal, 2),
+                'subtotal' => round($subtotal, 0),
             ];
-            $greedyTotal += $subtotal;
+            $greedyTotal += round($subtotal, 0);
         }
 
         $bestTierName = $greedyBreakdown[0]['tier_name'] ?? 'Standar';
-        $bestTotal = $greedyTotal;
+        $bestTotal = round($greedyTotal, 0);
         $bestBreakdown = $greedyBreakdown;
 
         // Periksa apakah mengambil paket satuan di atasnya lebih hemat (misal beli 11 pcs ecer 165rb vs 1 pack 150rb)
@@ -205,7 +205,7 @@ class PricingCalculator
             if ($opt['conversion'] > 1) {
                 $roundedUpUnits = (int) ceil($qtyBase / $opt['conversion']);
                 if ($roundedUpUnits >= $opt['min_qty']) {
-                    $bulkTotal = $roundedUpUnits * $opt['price_per_unit'];
+                    $bulkTotal = round($roundedUpUnits * $opt['price_per_unit'], 0);
                     if ($bulkTotal < $bestTotal) {
                         $bestTotal = $bulkTotal;
                         $bestTierName = $opt['tier_name'];
@@ -227,7 +227,7 @@ class PricingCalculator
 
         return [
             'unit_price' => round($bestTotal / $qtyBase, 2),
-            'total_price' => round($bestTotal, 2),
+            'total_price' => round($bestTotal, 0),
             'price_source' => 'tier',
             'applied_tier' => $bestTierName,
             'breakdown' => $bestBreakdown,

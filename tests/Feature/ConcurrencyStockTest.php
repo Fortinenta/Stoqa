@@ -15,7 +15,7 @@ test('uji konkurensi: dua proses menjual 10 dari stok 10 bersamaan, tepat satu b
     $dbPort = env('DB_TEST_PORT') ?: (env('DB_PORT') ?: '5432');
     $dbName = env('DB_TEST_DATABASE') ?: (config('database.connections.pgsql.database') && config('database.connections.pgsql.database') !== ':memory:' ? config('database.connections.pgsql.database') : 'stok_gudang');
     $dbUser = env('DB_TEST_USERNAME') ?: (config('database.connections.pgsql.username') && config('database.connections.pgsql.username') !== ':memory:' ? config('database.connections.pgsql.username') : 'postgres');
-    $dbPass = env('DB_TEST_PASSWORD') ?: (config('database.connections.pgsql.password') ?: 'qkz899mv24');
+    $dbPass = env('DB_TEST_PASSWORD') ?? env('DB_PASSWORD') ?? config('database.connections.pgsql.password');
 
     config([
         'database.default' => 'pgsql',

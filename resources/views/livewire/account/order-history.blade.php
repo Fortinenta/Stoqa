@@ -141,7 +141,7 @@
                                 $pendingPayment = $order->payments->where('status', \App\Enums\PaymentStatus::PENDING)->last();
                             @endphp
 
-                            @if ($order->status === \App\Enums\OrderStatus::PENDING_PAYMENT)
+                            @if (in_array($order->status, [\App\Enums\OrderStatus::PENDING_PAYMENT, \App\Enums\OrderStatus::MENUNGGU_VERIFIKASI]))
                                 @if ($pendingPayment)
                                     <button
                                         type="button"
