@@ -120,7 +120,7 @@ class ReservationService
             // Kunci baris order agar tidak terjadi race condition konfirmasi ganda
             $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
 
-            if (! in_array($lockedOrder->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_ONGKIR])) {
+            if (! in_array($lockedOrder->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_ONGKIR, OrderStatus::MENUNGGU_VERIFIKASI])) {
                 throw new \RuntimeException("Order #{$lockedOrder->id} tidak dapat dikonfirmasi pembayarannya karena berstatus: {$lockedOrder->status->label()}.");
             }
 
@@ -196,8 +196,13 @@ class ReservationService
     public function expireOverdue(): int
     {
         return DB::transaction(function () {
+            // Hanya expire reservasi jika order masih berstatus MENUNGGU_ONGKIR atau PENDING_PAYMENT
+            // Order yang sudah mengunggah bukti bayar (MENUNGGU_VERIFIKASI) dilindungi dari pelepasan stok
             $overdueReservations = StockReservation::where('status', ReservationStatus::ACTIVE)
                 ->where('expires_at', '<', now())
+                ->whereHas('order', function ($q) {
+                    $q->whereIn('status', [OrderStatus::MENUNGGU_ONGKIR, OrderStatus::PENDING_PAYMENT]);
+                })
                 ->lockForUpdate()
                 ->get();
 

@@ -70,7 +70,7 @@ class OrdersTable
                             return 'Ada Bukti';
                         }
 
-                        return in_array($record->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_ONGKIR])
+                        return in_array($record->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_VERIFIKASI, OrderStatus::MENUNGGU_ONGKIR])
                             ? 'Belum Ada'
                             : '-';
                     })
@@ -83,11 +83,11 @@ class OrdersTable
                     ->label('HPP (Modal)')
                     ->money('IDR', locale: 'id')
                     ->placeholder('-')
-                    ->visible(fn () => auth()->user()?->hasRole('admin') ?? false)
+                    ->visible(fn () => auth()->user()?->can('viewFinancials', Order::class) ?? false)
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('gross_profit')
                     ->label('Laba Kotor')
-                    ->visible(fn () => auth()->user()?->hasRole('admin') ?? false)
+                    ->visible(fn () => auth()->user()?->can('viewFinancials', Order::class) ?? false)
                     ->state(function (Order $record) {
                         if ($record->cogs_total === null) {
                             return null;
@@ -109,6 +109,7 @@ class OrdersTable
                     ->options([
                         OrderStatus::MENUNGGU_ONGKIR->value => 'Menunggu Ongkir',
                         OrderStatus::PENDING_PAYMENT->value => 'Menunggu Pembayaran',
+                        OrderStatus::MENUNGGU_VERIFIKASI->value => 'Menunggu Verifikasi',
                         OrderStatus::PAID->value => 'Sudah Dibayar',
                         OrderStatus::COMPLETED->value => 'Selesai',
                         OrderStatus::REJECTED->value => 'Ditolak',
@@ -188,7 +189,7 @@ class OrdersTable
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (Order $record) => in_array($record->status, [OrderStatus::MENUNGGU_ONGKIR, OrderStatus::PENDING_PAYMENT]))
+                    ->visible(fn (Order $record) => in_array($record->status, [OrderStatus::MENUNGGU_ONGKIR, OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_VERIFIKASI]))
                     ->requiresConfirmation()
                     ->form([
                         Textarea::make('reject_reason')
@@ -200,7 +201,7 @@ class OrdersTable
                             DB::transaction(function () use ($record, $data) {
                                 $lockedOrder = Order::where('id', $record->id)->lockForUpdate()->firstOrFail();
 
-                                if (! in_array($lockedOrder->status, [OrderStatus::MENUNGGU_ONGKIR, OrderStatus::PENDING_PAYMENT])) {
+                                if (! in_array($lockedOrder->status, [OrderStatus::MENUNGGU_ONGKIR, OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_VERIFIKASI])) {
                                     throw new \RuntimeException('Pesanan tidak dapat ditolak karena berstatus: '.$lockedOrder->status->label());
                                 }
 
@@ -247,7 +248,7 @@ class OrdersTable
                     ->label('Konfirmasi Bayar')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
-                    ->visible(fn (Order $record) => $record->status === OrderStatus::PENDING_PAYMENT)
+                    ->visible(fn (Order $record) => in_array($record->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_VERIFIKASI]))
                     ->requiresConfirmation()
                     ->modalHeading('Verifikasi & Konfirmasi Pembayaran Order')
                     ->modalContent(fn (Order $record) => view('filament.resources.orders.confirm-payment-modal', ['order' => $record->loadMissing('payments')]))

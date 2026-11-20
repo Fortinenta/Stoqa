@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PaymentProofController;
 use App\Livewire\Account\OrderHistory;
 use App\Livewire\Account\ProfileView;
 use App\Livewire\Cart\CartView;
@@ -39,4 +40,5 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 Route::middleware('auth')->group(function () {
     Route::get('/checkout', CheckoutView::class)->name('checkout');
     Route::get('/pesanan-saya', OrderHistory::class)->name('account.orders');
+    Route::get('/orders/{order}/payment-proof/{payment}', [PaymentProofController::class, 'show'])->name('payment.proof.show');
 });

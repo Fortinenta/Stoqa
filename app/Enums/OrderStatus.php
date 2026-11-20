@@ -6,6 +6,7 @@ enum OrderStatus: string
 {
     case MENUNGGU_ONGKIR = 'MENUNGGU_ONGKIR';
     case PENDING_PAYMENT = 'PENDING_PAYMENT';
+    case MENUNGGU_VERIFIKASI = 'MENUNGGU_VERIFIKASI';
     case PAID = 'PAID';
     case SHIPPED = 'SHIPPED';
     case COMPLETED = 'COMPLETED';
@@ -18,6 +19,7 @@ enum OrderStatus: string
         return match ($this) {
             self::MENUNGGU_ONGKIR => 'Menunggu Ongkir',
             self::PENDING_PAYMENT => 'Menunggu Pembayaran',
+            self::MENUNGGU_VERIFIKASI => 'Menunggu Verifikasi',
             self::PAID => 'Sudah Dibayar',
             self::SHIPPED => 'Sedang Dikirim',
             self::COMPLETED => 'Selesai',
@@ -31,7 +33,9 @@ enum OrderStatus: string
     {
         return match ($this) {
             self::MENUNGGU_ONGKIR => 'warning',
-            self::PENDING_PAYMENT, self::SHIPPED => 'info',
+            self::PENDING_PAYMENT => 'info',
+            self::MENUNGGU_VERIFIKASI => 'warning',
+            self::SHIPPED => 'info',
             self::PAID, self::COMPLETED => 'success',
             self::REJECTED, self::CANCELLED, self::EXPIRED => 'danger',
         };

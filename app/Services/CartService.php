@@ -95,8 +95,8 @@ class CartService
             'items' => $items,
             'total_items' => count($items),
             'total_base_qty' => $totalBaseQtyAll,
-            'subtotal' => round($totalPriceAll, 2),
-            'total_savings' => round($totalSavingsAll, 2),
+            'subtotal' => round($totalPriceAll, 0),
+            'total_savings' => round($totalSavingsAll, 0),
         ];
     }
 

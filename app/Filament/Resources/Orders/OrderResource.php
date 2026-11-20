@@ -35,7 +35,7 @@ class OrderResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = Order::where('status', OrderStatus::MENUNGGU_ONGKIR)->count();
+        $count = Order::whereIn('status', [OrderStatus::MENUNGGU_ONGKIR, OrderStatus::MENUNGGU_VERIFIKASI])->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -47,7 +47,7 @@ class OrderResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'Pesanan menunggu ongkir';
+        return 'Pesanan butuh tindakan admin (menunggu ongkir atau verifikasi)';
     }
 
     public static function form(Schema $schema): Schema
