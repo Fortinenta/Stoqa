@@ -16,8 +16,15 @@ class InitialDataSeeder extends Seeder
         ]);
 
         $defaults = [
-            'payment_hold_hours' => 12,   // batas bayar sejak invoice terbit
-            'shipping_due_hours' => 3,    // batas admin mengisi ongkir / menolak
+            'shipping_due_hours' => 3,    // batas admin mengisi ongkir / menolak (jam)
+            'payment_hold_hours' => 12,   // batas bayar sejak invoice terbit (jam)
+            'bank_bca_account' => '1234-5678-90',
+            'bank_bca_holder' => 'PT Stoqa Niaga Bersama',
+            'bank_mandiri_account' => '137-00-1234567-8',
+            'bank_mandiri_holder' => 'PT Stoqa Niaga Bersama',
+            'bank_bri_account' => '0012-01-000123-50-9',
+            'bank_bri_holder' => 'PT Stoqa Niaga Bersama',
+            'help_whatsapp' => '6281234567890',
             'payment_methods' => ['manual' => true, 'xendit' => false, 'midtrans' => false],
             'low_stock_alert' => true,
         ];

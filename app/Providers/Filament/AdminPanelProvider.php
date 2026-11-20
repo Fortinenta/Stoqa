@@ -76,6 +76,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Penjualan'),
                 NavigationGroup::make('Etalase'),
                 NavigationGroup::make('Gudang'),
+                NavigationGroup::make('Pengaturan'),
             ])
             ->maxContentWidth('7xl')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

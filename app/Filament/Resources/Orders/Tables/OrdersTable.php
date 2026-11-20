@@ -23,7 +23,7 @@ class OrdersTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with(['payments', 'user']))
+            ->modifyQueryUsing(fn ($query) => $query->with(['payments', 'user', 'costs']))
             ->columns([
                 TextColumn::make('invoice_no')
                     ->label('No. Invoice')
@@ -97,6 +97,21 @@ class OrdersTable
                     })
                     ->money('IDR', locale: 'id')
                     ->color('success')
+                    ->placeholder('-'),
+                TextColumn::make('net_profit')
+                    ->label('Laba Bersih')
+                    ->visible(fn () => auth()->user()?->can('viewFinancials', Order::class) ?? false)
+                    ->state(function (Order $record) {
+                        if ($record->cogs_total === null) {
+                            return null;
+                        }
+
+                        $totalCosts = (float) $record->costs->sum('amount');
+
+                        return (float) $record->total - (float) $record->cogs_total - $totalCosts;
+                    })
+                    ->money('IDR', locale: 'id')
+                    ->color(fn ($state) => $state >= 0 ? 'success' : 'danger')
                     ->placeholder('-'),
                 TextColumn::make('created_at')
                     ->label('Waktu Masuk')
@@ -274,6 +289,85 @@ class OrdersTable
                         } catch (\Throwable $e) {
                             Notification::make()
                                 ->title('Gagal Konfirmasi Pembayaran')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
+                // 5. Aksi Input & Kelola Biaya Riil Operasional (Ongkir Keluar, Packing, dll.)
+                Action::make('manageCosts')
+                    ->label('Biaya Riil')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->color('warning')
+                    ->visible(fn (Order $record) => in_array($record->status, [OrderStatus::PAID, OrderStatus::SHIPPED, OrderStatus::COMPLETED]) && (auth()->user()?->can('viewFinancials', Order::class) ?? false))
+                    ->modalHeading(fn (Order $record) => 'Biaya Riil Operasional - '.($record->invoice_no ?: ('Order #'.$record->id)))
+                    ->modalDescription('Catat pengeluaran nyata toko (ongkir riil ke kurir, biaya packing, dll.) untuk menghitung laba bersih secara akurat.')
+                    ->fillForm(function (Order $record): array {
+                        $shippingOut = $record->costs->where('type', 'shipping_out')->first();
+                        $packing = $record->costs->where('type', 'packing')->first();
+                        $other = $record->costs->where('type', 'other')->first();
+
+                        return [
+                            'shipping_out' => $shippingOut ? (float) $shippingOut->amount : 0,
+                            'packing' => $packing ? (float) $packing->amount : 0,
+                            'other' => $other ? (float) $other->amount : 0,
+                            'note' => $shippingOut?->note ?? $other?->note ?? '',
+                        ];
+                    })
+                    ->form([
+                        TextInput::make('shipping_out')
+                            ->label('Ongkir Riil Ekspedisi / Kurir')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->default(0)
+                            ->required(),
+                        TextInput::make('packing')
+                            ->label('Biaya Packing & Bubble Wrap')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->default(0),
+                        TextInput::make('other')
+                            ->label('Biaya Lain-lain (Komisi/Operasional)')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->default(0),
+                        TextInput::make('note')
+                            ->label('Catatan Ekspedisi / Resi')
+                            ->maxLength(255),
+                    ])
+                    ->action(function (Order $record, array $data) {
+                        try {
+                            DB::transaction(function () use ($record, $data) {
+                                $types = [
+                                    'shipping_out' => (float) ($data['shipping_out'] ?? 0),
+                                    'packing' => (float) ($data['packing'] ?? 0),
+                                    'other' => (float) ($data['other'] ?? 0),
+                                ];
+
+                                foreach ($types as $type => $amount) {
+                                    if ($amount > 0) {
+                                        $record->costs()->updateOrCreate(
+                                            ['type' => $type],
+                                            [
+                                                'amount' => $amount,
+                                                'note' => $data['note'] ?? null,
+                                            ]
+                                        );
+                                    } else {
+                                        $record->costs()->where('type', $type)->delete();
+                                    }
+                                }
+                            });
+
+                            Notification::make()
+                                ->title('Biaya Riil Disimpan')
+                                ->body('Pengeluaran nyata telah diperbarui dan laba bersih telah dihitung ulang.')
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('Gagal Menyimpan Biaya')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();
