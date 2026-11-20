@@ -38,7 +38,8 @@ class InventoryOverviewWidget extends BaseWidget
         $monthlyGrossProfit = 0.0;
 
         if ($isAdmin) {
-            $monthlyOrders = Order::whereIn('status', [OrderStatus::PAID, OrderStatus::COMPLETED, OrderStatus::SHIPPED])
+            $monthlyOrders = Order::with('costs')
+                ->whereIn('status', [OrderStatus::PAID, OrderStatus::COMPLETED, OrderStatus::SHIPPED])
                 ->where(function ($query) use ($startOfMonth) {
                     $query->where('paid_at', '>=', $startOfMonth)
                         ->orWhere(function ($q) use ($startOfMonth) {
@@ -52,6 +53,12 @@ class InventoryOverviewWidget extends BaseWidget
                 $cogs = (float) ($order->cogs_total ?? 0);
 
                 return (float) $order->subtotal - $cogs;
+            });
+            $monthlyNetProfit = (float) $monthlyOrders->sum(function ($order) {
+                $cogs = (float) ($order->cogs_total ?? 0);
+                $costs = (float) $order->costs->sum('amount');
+
+                return (float) $order->total - $cogs - $costs;
             });
         }
 
@@ -123,10 +130,16 @@ class InventoryOverviewWidget extends BaseWidget
                 ->color('primary'),
 
             Stat::make('Laba Kotor Bulan Ini', 'Rp '.number_format($monthlyGrossProfit, 0, ',', '.'))
-                ->description('Omzet: Rp '.number_format($monthlyRevenue, 0, ',', '.'))
+                ->description('Margin kotor sebelum biaya')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->chart([2, 4, 7, 5, 8, 12, 15])
                 ->color('success'),
+
+            Stat::make('Laba Bersih Bulan Ini', 'Rp '.number_format($monthlyNetProfit, 0, ',', '.'))
+                ->description('Setelah dikurangi biaya operasional')
+                ->descriptionIcon('heroicon-m-banknotes')
+                ->chart([2, 4, 7, 5, 8, 12, 15])
+                ->color($monthlyNetProfit >= 0 ? 'success' : 'danger'),
 
             Stat::make('Stok Tertahan (Hold)', number_format($activeHoldUnits, 0, ',', '.').' Unit')
                 ->description("Dari {$activeHoldOrders} pesanan aktif")
