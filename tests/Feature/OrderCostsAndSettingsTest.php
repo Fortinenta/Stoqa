@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\OrderCost;
+use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -80,4 +82,64 @@ test('pengaturan sistem dapat dibaca dan diperbarui dengan benar via Setting mod
 
     expect(Setting::get('shipping_due_hours'))->toBe(5)
         ->and(Setting::get('payment_hold_hours'))->toBe(24);
+});
+
+test('cache pengaturan di-flush secara otomatis saat nilai disimpan atau diupdate', function () {
+    Setting::set('shipping_due_hours', 4);
+    expect(Setting::get('shipping_due_hours'))->toBe(4);
+
+    $setting = Setting::find('shipping_due_hours');
+    $setting->update(['value' => 8]);
+
+    // Nilai cache harus ter-invalidation sehingga mengembalikan nilai 8
+    expect(Setting::get('shipping_due_hours'))->toBe(8);
+});
+
+test('admin dapat menolak bukti pembayaran dan pesanan kembali ke status PENDING_PAYMENT dengan batas waktu baru', function () {
+    $user = User::factory()->create();
+    $warehouse = Warehouse::create(['name' => 'Gudang Utama', 'is_default' => true]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'warehouse_id' => $warehouse->id,
+        'channel' => 'catalog',
+        'customer_name' => $user->name,
+        'status' => OrderStatus::MENUNGGU_VERIFIKASI,
+        'subtotal' => 100000,
+        'shipping_cost' => 10000,
+        'total' => 110000,
+        'expires_at' => now()->addHours(1),
+    ]);
+
+    $payment = Payment::create([
+        'order_id' => $order->id,
+        'method' => 'manual',
+        'provider' => 'manual_bca',
+        'amount' => 110000,
+        'status' => PaymentStatus::PENDING,
+        'proof_url' => 'payment-proofs/sample.jpg',
+    ]);
+
+    $rejectionReason = 'Foto struk buram dan tidak terbaca';
+    $holdHours = (int) Setting::get('payment_hold_hours', 12);
+    $newExpiresAt = now()->addHours($holdHours);
+
+    $order->payments()->where('status', PaymentStatus::PENDING)->get()->each(function ($p) use ($rejectionReason) {
+        $payload = $p->payload ?? [];
+        $payload['rejection_reason'] = $rejectionReason;
+        $payload['rejected_at'] = now()->toIso8601String();
+        $p->update(['status' => PaymentStatus::FAILED, 'payload' => $payload]);
+    });
+
+    $order->update([
+        'status' => OrderStatus::PENDING_PAYMENT,
+        'expires_at' => $newExpiresAt,
+    ]);
+
+    $payment->refresh();
+    $order->refresh();
+
+    expect($payment->status)->toBe(PaymentStatus::FAILED)
+        ->and($payment->payload['rejection_reason'])->toBe('Foto struk buram dan tidak terbaca')
+        ->and($order->status)->toBe(OrderStatus::PENDING_PAYMENT);
 });

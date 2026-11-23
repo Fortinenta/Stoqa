@@ -6,8 +6,10 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Setting;
 use App\Services\ReservationService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -45,6 +47,49 @@ class OrderHistory extends Component
         }
     }
 
+    public function getActivePaymentMethods(): array
+    {
+        $settingMethods = Setting::get('payment_methods', [
+            'manual_bca' => true,
+            'manual_mandiri' => true,
+            'manual_bri' => true,
+            'manual_qris' => false,
+        ]);
+
+        $available = [
+            'manual_bca' => [
+                'name' => 'Bank BCA',
+                'account' => (string) Setting::get('bank_bca_account', '1234-5678-90'),
+                'holder' => (string) Setting::get('bank_bca_holder', 'PT Stoqa Niaga Bersama'),
+            ],
+            'manual_mandiri' => [
+                'name' => 'Bank Mandiri',
+                'account' => (string) Setting::get('bank_mandiri_account', '137-00-1234567-8'),
+                'holder' => (string) Setting::get('bank_mandiri_holder', 'PT Stoqa Niaga Bersama'),
+            ],
+            'manual_bri' => [
+                'name' => 'Bank BRI',
+                'account' => (string) Setting::get('bank_bri_account', '0012-01-000123-50-9'),
+                'holder' => (string) Setting::get('bank_bri_holder', 'PT Stoqa Niaga Bersama'),
+            ],
+            'manual_qris' => [
+                'name' => 'QRIS (Gopay / OVO / Dana / BCA)',
+                'account' => 'NMID: ID102003004050',
+                'holder' => (string) Setting::get('bank_bca_holder', 'PT Stoqa Niaga Bersama'),
+            ],
+        ];
+
+        if (! is_array($settingMethods)) {
+            return $available;
+        }
+
+        $filtered = array_filter($available, function ($key) use ($settingMethods) {
+            return ! empty($settingMethods[$key]);
+        }, ARRAY_FILTER_USE_KEY);
+
+        return ! empty($filtered) ? $filtered : $available;
+    }
+
     public function openPaymentModal(int $orderId)
     {
         $order = Order::with(['items.product', 'items.unit', 'payments'])
@@ -59,7 +104,9 @@ class OrderHistory extends Component
         $this->senderBank = '';
         $this->paymentNotes = '';
         $this->proofFile = null;
-        $this->paymentMethod = 'manual_bca';
+
+        $activeMethods = $this->getActivePaymentMethods();
+        $this->paymentMethod = array_key_first($activeMethods) ?: 'manual_bca';
         $this->showPaymentModal = true;
     }
 
@@ -74,18 +121,22 @@ class OrderHistory extends Component
 
     public function submitPayment()
     {
+        $activeMethods = array_keys($this->getActivePaymentMethods());
+        $inRule = implode(',', $activeMethods);
+
         $this->validate([
-            'paymentMethod' => ['required', 'string', 'in:manual_bca,manual_mandiri,manual_bri,manual_qris'],
+            'paymentMethod' => ['required', 'string', 'in:'.$inRule],
             'senderBank' => 'required|string|max:100',
             'senderName' => 'required|string|max:255',
-            'proofFile' => 'required|image|max:3072', // Maksimal 3MB
+            'proofFile' => 'required|image|mimes:jpg,jpeg,png,webp|max:3072', // Maksimal 3MB
             'paymentNotes' => 'nullable|string|max:500',
         ], [
-            'paymentMethod.in' => 'Metode pembayaran tidak valid.',
+            'paymentMethod.in' => 'Metode pembayaran tidak valid atau sedang dinonaktifkan.',
             'senderBank.required' => 'Nama bank asal pengirim wajib diisi.',
             'senderName.required' => 'Nama pemilik rekening pengirim wajib diisi.',
             'proofFile.required' => 'Foto bukti struk transfer wajib diunggah.',
-            'proofFile.image' => 'Bukti transfer harus berupa gambar (JPG/PNG).',
+            'proofFile.image' => 'Bukti transfer harus berupa gambar (JPG/PNG/WEBP).',
+            'proofFile.mimes' => 'Format gambar yang diperbolehkan: JPG, JPEG, PNG, dan WEBP.',
             'proofFile.max' => 'Ukuran foto maksimal 3MB.',
         ]);
 
@@ -97,34 +148,39 @@ class OrderHistory extends Component
         // Simpan file bukti transfer ke storage privat (local disk)
         $storedPath = $this->proofFile->store('payment-proofs', 'local');
 
-        DB::transaction(function () use ($order, $storedPath) {
-            $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
+        try {
+            DB::transaction(function () use ($order, $storedPath) {
+                $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
 
-            if (! in_array($lockedOrder->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_VERIFIKASI])) {
-                throw new \RuntimeException('Status pesanan telah berubah dan tidak dapat menerima bukti pembayaran.');
-            }
+                if (! in_array($lockedOrder->status, [OrderStatus::PENDING_PAYMENT, OrderStatus::MENUNGGU_VERIFIKASI])) {
+                    throw new \RuntimeException('Status pesanan telah berubah dan tidak dapat menerima bukti pembayaran.');
+                }
 
-            // Buat entri pembayaran manual baru
-            Payment::create([
-                'order_id' => $lockedOrder->id,
-                'method' => 'manual',
-                'provider' => $this->paymentMethod,
-                'amount' => $lockedOrder->total,
-                'status' => PaymentStatus::PENDING,
-                'proof_url' => $storedPath,
-                'payload' => [
-                    'sender_bank' => $this->senderBank,
-                    'sender_name' => $this->senderName,
-                    'notes' => $this->paymentNotes,
-                    'submitted_at' => now()->toIso8601String(),
-                ],
-            ]);
+                // Buat entri pembayaran manual baru
+                Payment::create([
+                    'order_id' => $lockedOrder->id,
+                    'method' => 'manual',
+                    'provider' => $this->paymentMethod,
+                    'amount' => $lockedOrder->total,
+                    'status' => PaymentStatus::PENDING,
+                    'proof_url' => $storedPath,
+                    'payload' => [
+                        'sender_bank' => $this->senderBank,
+                        'sender_name' => $this->senderName,
+                        'notes' => $this->paymentNotes,
+                        'submitted_at' => now()->toIso8601String(),
+                    ],
+                ]);
 
-            // Perbarui status pesanan menjadi MENUNGGU_VERIFIKASI
-            $lockedOrder->update([
-                'status' => OrderStatus::MENUNGGU_VERIFIKASI,
-            ]);
-        });
+                // Perbarui status pesanan menjadi MENUNGGU_VERIFIKASI
+                $lockedOrder->update([
+                    'status' => OrderStatus::MENUNGGU_VERIFIKASI,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($storedPath);
+            throw $e;
+        }
 
         $this->showPaymentModal = false;
         session()->flash('success', "Bukti pembayaran pesanan #{$order->id} ({$order->invoice_no}) berhasil diunggah! Kasir/Admin akan segera memverifikasi pembayaran Anda.");

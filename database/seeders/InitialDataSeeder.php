@@ -25,7 +25,12 @@ class InitialDataSeeder extends Seeder
             'bank_bri_account' => '0012-01-000123-50-9',
             'bank_bri_holder' => 'PT Stoqa Niaga Bersama',
             'help_whatsapp' => '6281234567890',
-            'payment_methods' => ['manual' => true, 'xendit' => false, 'midtrans' => false],
+            'payment_methods' => [
+                'manual_bca' => true,
+                'manual_mandiri' => true,
+                'manual_bri' => true,
+                'manual_qris' => false,
+            ],
             'low_stock_alert' => true,
         ];
 

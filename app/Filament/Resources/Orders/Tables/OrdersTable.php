@@ -106,9 +106,20 @@ class OrdersTable
                             return null;
                         }
 
-                        $totalCosts = (float) $record->costs->sum('amount');
+                        $totalCosts = (int) round($record->costs->sum('amount'));
 
-                        return (float) $record->total - (float) $record->cogs_total - $totalCosts;
+                        return (int) round($record->total) - (int) round($record->cogs_total) - $totalCosts;
+                    })
+                    ->description(function (Order $record): ?string {
+                        if ($record->cogs_total === null) {
+                            return null;
+                        }
+
+                        if ($record->costs->isEmpty() && (int) round($record->shipping_cost) > 0) {
+                            return 'Estimasi (Biaya riil belum diisi)';
+                        }
+
+                        return null;
                     })
                     ->money('IDR', locale: 'id')
                     ->color(fn ($state) => $state >= 0 ? 'success' : 'danger')
@@ -191,9 +202,10 @@ class OrdersTable
                                 ->success()
                                 ->send();
                         } catch (\Throwable $e) {
+                            report($e);
                             Notification::make()
                                 ->title('Gagal Memproses Ongkir')
-                                ->body($e->getMessage())
+                                ->body('Terjadi kendala saat memperbarui ongkir. Pastikan nominal ongkir valid.')
                                 ->danger()
                                 ->send();
                         }
@@ -236,9 +248,10 @@ class OrdersTable
                                 ->warning()
                                 ->send();
                         } catch (\Throwable $e) {
+                            report($e);
                             Notification::make()
                                 ->title('Gagal Menolak Pesanan')
-                                ->body($e->getMessage())
+                                ->body('Terjadi kendala sistem saat menolak pesanan.')
                                 ->danger()
                                 ->send();
                         }
@@ -287,9 +300,73 @@ class OrdersTable
                                 ->success()
                                 ->send();
                         } catch (\Throwable $e) {
+                            report($e);
                             Notification::make()
                                 ->title('Gagal Konfirmasi Pembayaran')
-                                ->body($e->getMessage())
+                                ->body('Terjadi kendala saat mengonfirmasi pembayaran. Pastikan data stok pesanan valid.')
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
+                // 4b. Aksi Tolak Bukti Transfer (Bukti Tidak Valid)
+                Action::make('rejectPaymentProof')
+                    ->label('Bukti Tidak Valid')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->color('warning')
+                    ->visible(fn (Order $record) => $record->status === OrderStatus::MENUNGGU_VERIFIKASI)
+                    ->requiresConfirmation()
+                    ->modalHeading('Tolak Bukti Transfer / Bukti Tidak Valid')
+                    ->modalDescription('Tolak bukti transfer yang buram, nominal tidak sesuai, atau salah rekening. Status pesanan akan dikembalikan ke Menunggu Pembayaran dan batas bayar diperpanjang agar pembeli dapat mengunggah ulang.')
+                    ->form([
+                        Textarea::make('rejection_reason')
+                            ->label('Alasan Penolakan / Catatan untuk Pembeli')
+                            ->placeholder('Contoh: Foto struk transfer buram/terpotong atau nominal transfer kurang.')
+                            ->required(),
+                    ])
+                    ->action(function (Order $record, array $data) {
+                        try {
+                            DB::transaction(function () use ($record, $data) {
+                                $lockedOrder = Order::where('id', $record->id)->lockForUpdate()->firstOrFail();
+
+                                if ($lockedOrder->status !== OrderStatus::MENUNGGU_VERIFIKASI) {
+                                    throw new \RuntimeException('Pesanan ini tidak sedang menunggu verifikasi.');
+                                }
+
+                                $holdHours = (int) Setting::get('payment_hold_hours', 12);
+                                $newExpiresAt = now()->addHours($holdHours);
+
+                                foreach ($lockedOrder->payments()->where('status', PaymentStatus::PENDING)->get() as $payment) {
+                                    $payload = $payment->payload ?? [];
+                                    $payload['rejection_reason'] = $data['rejection_reason'];
+                                    $payload['rejected_at'] = now()->toIso8601String();
+
+                                    $payment->update([
+                                        'status' => PaymentStatus::FAILED,
+                                        'payload' => $payload,
+                                    ]);
+                                }
+
+                                $lockedOrder->update([
+                                    'status' => OrderStatus::PENDING_PAYMENT,
+                                    'expires_at' => $newExpiresAt,
+                                ]);
+
+                                StockReservation::where('order_id', $lockedOrder->id)
+                                    ->where('status', ReservationStatus::ACTIVE)
+                                    ->update(['expires_at' => $newExpiresAt]);
+                            });
+
+                            Notification::make()
+                                ->title('Bukti Pembayaran Ditolak')
+                                ->body('Status pesanan dikembalikan ke Menunggu Pembayaran dan pembeli dapat mengunggah struk baru.')
+                                ->warning()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            report($e);
+                            Notification::make()
+                                ->title('Gagal Menolak Bukti Pembayaran')
+                                ->body('Terjadi kendala sistem saat menolak bukti pembayaran.')
                                 ->danger()
                                 ->send();
                         }
@@ -298,7 +375,7 @@ class OrdersTable
                 // 5. Aksi Input & Kelola Biaya Riil Operasional (Ongkir Keluar, Packing, dll.)
                 Action::make('manageCosts')
                     ->label('Biaya Riil')
-                    ->icon('heroicon-o-currency-dollar')
+                    ->icon('phosphor-coins-duotone')
                     ->color('warning')
                     ->visible(fn (Order $record) => in_array($record->status, [OrderStatus::PAID, OrderStatus::SHIPPED, OrderStatus::COMPLETED]) && (auth()->user()?->can('viewFinancials', Order::class) ?? false))
                     ->modalHeading(fn (Order $record) => 'Biaya Riil Operasional - '.($record->invoice_no ?: ('Order #'.$record->id)))
@@ -366,9 +443,10 @@ class OrdersTable
                                 ->success()
                                 ->send();
                         } catch (\Throwable $e) {
+                            report($e);
                             Notification::make()
-                                ->title('Gagal Menyimpan Biaya')
-                                ->body($e->getMessage())
+                                ->title('Gagal Menyimpan Biaya Riil')
+                                ->body('Terjadi kendala saat menyimpan pengeluaran riil pesanan. Pastikan nominal valid.')
                                 ->danger()
                                 ->send();
                         }

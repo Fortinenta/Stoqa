@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Settings\Tables;
 
 use App\Models\Setting;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -38,6 +39,7 @@ class SettingsTable
                         'bank_mandiri_account' => 'Nomor rekening bank Mandiri yang tampil di halaman pembayaran pembeli.',
                         'bank_bri_account' => 'Nomor rekening bank BRI yang tampil di halaman pembayaran pembeli.',
                         'help_whatsapp' => 'Nomor kontak WhatsApp admin/toko untuk bantuan pelanggan.',
+                        'payment_methods' => 'Saklar metode transfer/pembayaran yang aktif dan dapat dipilih pembeli.',
                         default => 'Parameter konfigurasi operasional Stoqa.',
                     })
                     ->weight('bold')
@@ -54,6 +56,11 @@ class SettingsTable
                     ->state(function (Setting $record): string {
                         if ($record->key === 'shipping_due_hours' || $record->key === 'payment_hold_hours') {
                             return $record->value.' Jam';
+                        }
+                        if ($record->key === 'payment_methods' && is_array($record->value)) {
+                            $active = array_keys(array_filter($record->value));
+
+                            return count($active) ? implode(', ', array_map(fn ($k) => strtoupper(str_replace('manual_', '', $k)), $active)) : 'Semua Nonaktif';
                         }
                         if (is_array($record->value)) {
                             return json_encode($record->value);
@@ -82,18 +89,47 @@ class SettingsTable
                         'bank_bri_account' => 'Nomor Rekening BRI',
                         'bank_bri_holder' => 'Atas Nama Rekening BRI',
                         'help_whatsapp' => 'WhatsApp Bantuan / CS',
+                        'payment_methods' => 'Metode Pembayaran Aktif',
                         default => $record->key,
                     })
                     ->form(function (Setting $record): array {
                         if ($record->key === 'shipping_due_hours' || $record->key === 'payment_hold_hours') {
                             return [
                                 TextInput::make('value')
-                                    ->label('Durasi Waktu')
+                                    ->label('Durasi Waktu (Jam)')
                                     ->numeric()
                                     ->minValue(1)
-                                    ->maxValue(720)
+                                    ->maxValue(168)
                                     ->suffix('Jam')
+                                    ->helperText('Batas durasi minimal 1 jam dan maksimal 168 jam (7 hari).')
                                     ->default($record->value)
+                                    ->required(),
+                            ];
+                        }
+
+                        if ($record->key === 'payment_methods') {
+                            return [
+                                CheckboxList::make('methods')
+                                    ->label('Pilih Metode Pembayaran yang Aktif')
+                                    ->options([
+                                        'manual_bca' => 'Transfer Bank BCA',
+                                        'manual_mandiri' => 'Transfer Bank Mandiri',
+                                        'manual_bri' => 'Transfer Bank BRI',
+                                        'manual_qris' => 'QRIS (Gopay, OVO, Dana, ShopeePay)',
+                                    ])
+                                    ->default(fn () => is_array($record->value) ? array_keys(array_filter($record->value)) : ['manual_bca', 'manual_mandiri', 'manual_bri'])
+                                    ->required(),
+                            ];
+                        }
+
+                        if ($record->key === 'help_whatsapp') {
+                            return [
+                                TextInput::make('value')
+                                    ->label('Nomor WhatsApp Bantuan')
+                                    ->tel()
+                                    ->regex('/^[0-9+]{8,20}$/')
+                                    ->helperText('Format nomor diawali dengan 62 atau +62, contoh: 6281234567890.')
+                                    ->default((string) $record->value)
                                     ->required(),
                             ];
                         }
@@ -101,17 +137,28 @@ class SettingsTable
                         return [
                             TextInput::make('value')
                                 ->label('Nilai Pengaturan')
+                                ->maxLength(150)
                                 ->default(is_array($record->value) ? json_encode($record->value) : (string) $record->value)
                                 ->required(),
                         ];
                     })
                     ->action(function (Setting $record, array $data) {
-                        $val = is_numeric($data['value']) ? (int) $data['value'] : $data['value'];
-                        $record->update(['value' => $val]);
+                        if ($record->key === 'payment_methods') {
+                            $selected = $data['methods'] ?? [];
+                            $allMethods = ['manual_bca', 'manual_mandiri', 'manual_bri', 'manual_qris'];
+                            $val = [];
+                            foreach ($allMethods as $m) {
+                                $val[$m] = in_array($m, $selected);
+                            }
+                            $record->update(['value' => $val]);
+                        } else {
+                            $val = is_numeric($data['value']) ? (int) $data['value'] : $data['value'];
+                            $record->update(['value' => $val]);
+                        }
 
                         Notification::make()
                             ->title('Pengaturan Berhasil Disimpan')
-                            ->body("Konfigurasi parameter {$record->key} kini bernilai: {$data['value']}.")
+                            ->body("Konfigurasi parameter {$record->key} telah diperbarui.")
                             ->success()
                             ->send();
                     }),

@@ -36,13 +36,17 @@ class PaymentProofController extends Controller
             abort(404, 'Bukti pembayaran belum diunggah.');
         }
 
+        $headers = [
+            'X-Content-Type-Options' => 'nosniff',
+        ];
+
         // Cari di disk local (private), fallback ke disk public untuk kompatibilitas data lama
         if (Storage::disk('local')->exists($path)) {
-            return Storage::disk('local')->response($path);
+            return Storage::disk('local')->response($path, headers: $headers);
         }
 
         if (Storage::disk('public')->exists($path)) {
-            return Storage::disk('public')->response($path);
+            return Storage::disk('public')->response($path, headers: $headers);
         }
 
         abort(404, 'File bukti transfer fisik tidak ditemukan di server.');

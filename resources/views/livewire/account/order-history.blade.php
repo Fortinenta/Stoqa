@@ -127,6 +127,20 @@
                                     Batas bayar sebelum hold expired: {{ $order->expires_at->format('d M H:i') }} WIB
                                 </p>
                             @endif
+
+                            @php
+                                $failedPayment = $order->payments->where('status', \App\Enums\PaymentStatus::FAILED)->last();
+                            @endphp
+                            @if ($order->status === \App\Enums\OrderStatus::PENDING_PAYMENT && $failedPayment && ! empty($failedPayment->payload['rejection_reason']))
+                                <div class="mt-1.5 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
+                                    <strong class="font-bold flex items-center gap-1 text-rose-900">
+                                        <svg class="w-3.5 h-3.5 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        Bukti Pembayaran Ditolak Admin:
+                                    </strong>
+                                    <p class="mt-0.5 text-[11px] text-rose-700 font-medium">{{ $failedPayment->payload['rejection_reason'] }}</p>
+                                    <span class="text-[10px] text-rose-600 mt-0.5 block">Silakan unggah ulang foto struk transfer yang valid.</span>
+                                </div>
+                            @endif
                         </div>
 
                         <div class="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
@@ -229,75 +243,55 @@
                             </div>
                         </div>
 
+                        @php
+                            $activeMethods = $this->getActivePaymentMethods();
+                            $selectedDetails = $activeMethods[$paymentMethod] ?? (reset($activeMethods) ?: null);
+                        @endphp
+
                         <!-- Pilihan Metode Transfer Bank Manual -->
                         <div>
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pilih Rekening Tujuan Transfer</label>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                                <!-- BCA -->
-                                <label class="cursor-pointer border rounded-2xl p-3 flex flex-col justify-between transition {{ $paymentMethod === 'manual_bca' ? 'border-stoqa-600 bg-stoqa-50/60 shadow-xs' : 'border-slate-200 hover:border-slate-300' }}">
-                                    <input type="radio" wire:model.live="paymentMethod" value="manual_bca" class="sr-only">
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-extrabold text-sm text-blue-800">Bank BCA</span>
-                                        <div class="w-3.5 h-3.5 rounded-full border-2 {{ $paymentMethod === 'manual_bca' ? 'border-stoqa-600 bg-stoqa-600' : 'border-slate-300' }}"></div>
-                                    </div>
-                                    <span class="text-[11px] text-slate-500 mt-2 font-mono">872-098-1122</span>
-                                </label>
-
-                                <!-- Mandiri -->
-                                <label class="cursor-pointer border rounded-2xl p-3 flex flex-col justify-between transition {{ $paymentMethod === 'manual_mandiri' ? 'border-stoqa-600 bg-stoqa-50/60 shadow-xs' : 'border-slate-200 hover:border-slate-300' }}">
-                                    <input type="radio" wire:model.live="paymentMethod" value="manual_mandiri" class="sr-only">
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-extrabold text-sm text-amber-800">Bank Mandiri</span>
-                                        <div class="w-3.5 h-3.5 rounded-full border-2 {{ $paymentMethod === 'manual_mandiri' ? 'border-stoqa-600 bg-stoqa-600' : 'border-slate-300' }}"></div>
-                                    </div>
-                                    <span class="text-[11px] text-slate-500 mt-2 font-mono">133-00-1928-3344</span>
-                                </label>
-
-                                <!-- BRI -->
-                                <label class="cursor-pointer border rounded-2xl p-3 flex flex-col justify-between transition {{ $paymentMethod === 'manual_bri' ? 'border-stoqa-600 bg-stoqa-50/60 shadow-xs' : 'border-slate-200 hover:border-slate-300' }}">
-                                    <input type="radio" wire:model.live="paymentMethod" value="manual_bri" class="sr-only">
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-extrabold text-sm text-blue-900">Bank BRI</span>
-                                        <div class="w-3.5 h-3.5 rounded-full border-2 {{ $paymentMethod === 'manual_bri' ? 'border-stoqa-600 bg-stoqa-600' : 'border-slate-300' }}"></div>
-                                    </div>
-                                    <span class="text-[11px] text-slate-500 mt-2 font-mono">0206-01-002233-50</span>
-                                </label>
+                                @forelse ($activeMethods as $key => $method)
+                                    <label class="cursor-pointer border rounded-2xl p-3 flex flex-col justify-between transition {{ $paymentMethod === $key ? 'border-stoqa-600 bg-stoqa-50/60 shadow-xs' : 'border-slate-200 hover:border-slate-300' }}">
+                                        <input type="radio" wire:model.live="paymentMethod" value="{{ $key }}" class="sr-only">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-extrabold text-sm text-slate-800">{{ $method['name'] }}</span>
+                                            <div class="w-3.5 h-3.5 rounded-full border-2 {{ $paymentMethod === $key ? 'border-stoqa-600 bg-stoqa-600' : 'border-slate-300' }}"></div>
+                                        </div>
+                                        <span class="text-[11px] text-slate-500 mt-2 font-mono">{{ $method['account'] }}</span>
+                                    </label>
+                                @empty
+                                    <p class="text-xs text-amber-700 col-span-3">Metode transfer sedang dipersiapkan oleh admin.</p>
+                                @endforelse
                             </div>
 
                             <!-- Detail Rekening yang Dipilih -->
-                            <div class="mt-3 p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs" x-data="{ copied: false }">
-                                <div>
-                                    <span class="text-slate-400 font-medium">Atas Nama:</span>
-                                    <strong class="text-slate-800 block text-sm font-bold">PT Stoqa Niaga Indonesia</strong>
-                                    <span class="text-slate-400 font-medium mt-1 inline-block">Nomor Rekening:</span>
-                                    <span class="font-mono font-black text-sm text-slate-900 block">
-                                        @if ($paymentMethod === 'manual_bca')
-                                            8720981122
-                                        @elseif ($paymentMethod === 'manual_mandiri')
-                                            1330019283344
-                                        @else
-                                            020601002233501
-                                        @endif
-                                    </span>
+                            @if ($selectedDetails)
+                                <div class="mt-3 p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs" x-data="{ copied: false }">
+                                    <div>
+                                        <span class="text-slate-400 font-medium">Atas Nama:</span>
+                                        <strong class="text-slate-800 block text-sm font-bold">{{ $selectedDetails['holder'] }}</strong>
+                                        <span class="text-slate-400 font-medium mt-1 inline-block">Nomor Rekening / Pembayaran:</span>
+                                        <span class="font-mono font-black text-sm text-slate-900 block">{{ $selectedDetails['account'] }}</span>
+                                    </div>
+                                    <div>
+                                        <button
+                                            type="button"
+                                            @click="
+                                                navigator.clipboard.writeText('{{ $selectedDetails['account'] }}');
+                                                copied = true;
+                                                setTimeout(() => copied = false, 2500);
+                                            "
+                                            class="px-4 py-2 rounded-xl bg-white border border-slate-300 hover:border-stoqa-500 text-slate-700 font-bold transition flex items-center gap-1.5 shadow-xs"
+                                        >
+                                            <svg x-show="!copied" class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                                            <svg x-show="copied" x-cloak class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                            <span x-text="copied ? 'Tersalin!' : 'Salin No. Rekening'"></span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div>
-                                    <button
-                                        type="button"
-                                        @click="
-                                            navigator.clipboard.writeText(
-                                                '{{ $paymentMethod === 'manual_bca' ? '8720981122' : ($paymentMethod === 'manual_mandiri' ? '1330019283344' : '020601002233501') }}'
-                                            );
-                                            copied = true;
-                                            setTimeout(() => copied = false, 2500);
-                                        "
-                                        class="px-4 py-2 rounded-xl bg-white border border-slate-300 hover:border-stoqa-500 text-slate-700 font-bold transition flex items-center gap-1.5 shadow-xs"
-                                    >
-                                        <svg x-show="!copied" class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                                        <svg x-show="copied" x-cloak class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                                        <span x-text="copied ? 'Tersalin!' : 'Salin No. Rekening'"></span>
-                                    </button>
-                                </div>
-                            </div>
+                            @endif
                         </div>
 
                         <!-- Form Bukti Pembayaran -->

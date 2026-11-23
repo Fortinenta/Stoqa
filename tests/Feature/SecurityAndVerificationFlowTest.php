@@ -76,13 +76,15 @@ test('rute bukti pembayaran memblokir akses publik tanpa login dan pelanggan lai
     $strangerResponse = $this->actingAs($stranger)->get(route('payment.proof.show', ['order' => $order->id, 'payment' => $payment->id]));
     $strangerResponse->assertForbidden();
 
-    // 3. Pemilik order -> 200 OK
+    // 3. Pemilik order -> 200 OK & Header nosniff
     $ownerResponse = $this->actingAs($owner)->get(route('payment.proof.show', ['order' => $order->id, 'payment' => $payment->id]));
-    $ownerResponse->assertOk();
+    $ownerResponse->assertOk()
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
 
-    // 4. Admin -> 200 OK
+    // 4. Admin -> 200 OK & Header nosniff
     $adminResponse = $this->actingAs($admin)->get(route('payment.proof.show', ['order' => $order->id, 'payment' => $payment->id]));
-    $adminResponse->assertOk();
+    $adminResponse->assertOk()
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
 });
 
 test('order dengan status MENUNGGU_VERIFIKASI dilindungi dari pelepasan stok otomatis oleh expireOverdue', function () {
