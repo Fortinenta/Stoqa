@@ -47,13 +47,52 @@ class OrderHistory extends Component
         }
     }
 
+    public function getPaymentSystemConfig(): array
+    {
+        $cfg = Setting::get('payment_methods', []);
+        if (! is_array($cfg)) {
+            return [
+                'system_enabled' => false,
+                'manual_enabled' => false,
+                'gateway_enabled' => false,
+                'channels' => [],
+            ];
+        }
+
+        if (! isset($cfg['system_enabled'])) {
+            return [
+                'system_enabled' => true,
+                'manual_enabled' => true,
+                'gateway_enabled' => false,
+                'channels' => $cfg,
+            ];
+        }
+
+        return [
+            'system_enabled' => (bool) ($cfg['system_enabled'] ?? true),
+            'manual_enabled' => (bool) ($cfg['manual_enabled'] ?? false),
+            'gateway_enabled' => (bool) ($cfg['gateway_enabled'] ?? false),
+            'channels' => (array) ($cfg['channels'] ?? []),
+            'gateway_provider' => $cfg['gateway_provider'] ?? 'midtrans',
+            'gateway_mode' => $cfg['gateway_mode'] ?? 'sandbox',
+        ];
+    }
+
+    public function isPaymentSystemEnabled(): bool
+    {
+        $config = $this->getPaymentSystemConfig();
+
+        return $config['system_enabled'] && ($config['manual_enabled'] || $config['gateway_enabled']);
+    }
+
     public function getActivePaymentMethods(): array
     {
-        $settingMethods = Setting::get('payment_methods', []);
-        if (! is_array($settingMethods)) {
+        $config = $this->getPaymentSystemConfig();
+        if (! $config['system_enabled'] || ! $config['manual_enabled']) {
             return [];
         }
 
+        $channels = $config['channels'];
         $available = [];
 
         $bcaAccount = trim((string) Setting::get('bank_bca_account', ''));
@@ -92,8 +131,8 @@ class OrderHistory extends Component
             ];
         }
 
-        return array_filter($available, function ($key) use ($settingMethods) {
-            return ! empty($settingMethods[$key]);
+        return array_filter($available, function ($key) use ($channels) {
+            return ! empty($channels[$key]);
         }, ARRAY_FILTER_USE_KEY);
     }
 
@@ -128,9 +167,15 @@ class OrderHistory extends Component
 
     public function submitPayment()
     {
+        if (! $this->isPaymentSystemEnabled()) {
+            session()->flash('error', 'Sistem pembayaran saat ini sedang dinonaktifkan untuk pemeliharaan berkala.');
+
+            return;
+        }
+
         $activeMethods = array_keys($this->getActivePaymentMethods());
         if (empty($activeMethods)) {
-            session()->flash('error', 'Saat ini kanal pembayaran belum tersedia atau sedang dalam pemeliharaan. Silakan hubungi admin toko.');
+            session()->flash('error', 'Saat ini kanal transfer manual belum tersedia atau sedang dinonaktifkan.');
 
             return;
         }

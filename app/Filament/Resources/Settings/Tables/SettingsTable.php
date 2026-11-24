@@ -5,8 +5,11 @@ namespace App\Filament\Resources\Settings\Tables;
 use App\Models\Setting;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -62,9 +65,26 @@ class SettingsTable
                             return $record->value.' Jam';
                         }
                         if ($record->key === 'payment_methods' && is_array($record->value)) {
-                            $active = array_keys(array_filter($record->value));
+                            $cfg = $record->value;
+                            $systemEnabled = $cfg['system_enabled'] ?? true;
+                            if (! $systemEnabled) {
+                                return '🔴 Nonaktif (Maintenance Mode)';
+                            }
 
-                            return count($active) ? implode(', ', array_map(fn ($k) => strtoupper(str_replace('manual_', '', $k)), $active)) : 'Semua Nonaktif';
+                            $manualEnabled = $cfg['manual_enabled'] ?? true;
+                            $channels = $cfg['channels'] ?? (isset($cfg['manual_bca']) ? $cfg : []);
+                            $activeChannels = array_keys(array_filter($channels));
+
+                            $manualStatus = $manualEnabled
+                                ? (count($activeChannels) ? 'Manual: '.implode(', ', array_map(fn ($k) => strtoupper(str_replace('manual_', '', $k)), $activeChannels)) : 'Manual: Aktif (Tanpa Bank)')
+                                : 'Manual: Nonaktif';
+
+                            $gatewayEnabled = $cfg['gateway_enabled'] ?? false;
+                            $gatewayProvider = strtoupper($cfg['gateway_provider'] ?? 'midtrans');
+                            $gatewayMode = ucfirst($cfg['gateway_mode'] ?? 'sandbox');
+                            $gatewayStatus = $gatewayEnabled ? "Gateway: {$gatewayProvider} ({$gatewayMode})" : 'Gateway: Nonaktif';
+
+                            return "{$manualStatus} | {$gatewayStatus}";
                         }
                         if (is_array($record->value)) {
                             return json_encode($record->value);
@@ -114,17 +134,69 @@ class SettingsTable
                         }
 
                         if ($record->key === 'payment_methods') {
+                            $raw = is_array($record->value) ? $record->value : [];
+                            $systemEnabled = $raw['system_enabled'] ?? true;
+                            $manualEnabled = $raw['manual_enabled'] ?? true;
+                            $channels = $raw['channels'] ?? (isset($raw['manual_bca']) ? $raw : []);
+                            $activeChannels = array_keys(array_filter($channels));
+                            $gatewayEnabled = $raw['gateway_enabled'] ?? false;
+                            $gatewayProvider = $raw['gateway_provider'] ?? 'midtrans';
+                            $gatewayMode = $raw['gateway_mode'] ?? 'sandbox';
+
                             return [
-                                CheckboxList::make('methods')
-                                    ->label('Pilih Metode Pembayaran yang Aktif')
-                                    ->options([
-                                        'manual_bca' => 'Transfer Bank BCA',
-                                        'manual_mandiri' => 'Transfer Bank Mandiri',
-                                        'manual_bri' => 'Transfer Bank BRI',
-                                        'manual_qris' => 'QRIS (Gopay, OVO, Dana, ShopeePay)',
-                                    ])
-                                    ->default(fn () => is_array($record->value) ? array_keys(array_filter($record->value)) : ['manual_bca', 'manual_mandiri', 'manual_bri'])
-                                    ->required(),
+                                Toggle::make('system_enabled')
+                                    ->label('Aktifkan Seluruh Sistem Pembayaran')
+                                    ->helperText('Matikan toggle ini jika toko sedang dalam pemeliharaan (Maintenance Mode). Saat nonaktif, pembeli akan melihat soft warning bahwa pembayaran sedang dalam pemeliharaan.')
+                                    ->default($systemEnabled)
+                                    ->live(),
+
+                                Fieldset::make('Mode Pembayaran Manual (Transfer Bank & Verifikasi Struk)')
+                                    ->schema([
+                                        Toggle::make('manual_enabled')
+                                            ->label('Aktifkan Pembayaran Manual')
+                                            ->helperText('Pembeli mentransfer dana ke rekening toko dan mengunggah struk transfer untuk diverifikasi admin.')
+                                            ->default($manualEnabled)
+                                            ->live(),
+
+                                        CheckboxList::make('manual_channels')
+                                            ->label('Pilihan Rekening Bank / QRIS yang Dibuka')
+                                            ->options([
+                                                'manual_bca' => 'Transfer Bank BCA',
+                                                'manual_mandiri' => 'Transfer Bank Mandiri',
+                                                'manual_bri' => 'Transfer Bank BRI',
+                                                'manual_qris' => 'QRIS Manual (Statis)',
+                                            ])
+                                            ->default($activeChannels)
+                                            ->visible(fn ($get) => (bool) $get('manual_enabled'))
+                                            ->helperText('Hanya rekening yang sudah diisi nomor rekeningnya di Pengaturan yang akan tampil ke pembeli.'),
+                                    ]),
+
+                                Fieldset::make('Mode Pembayaran Otomatis (Payment Gateway)')
+                                    ->schema([
+                                        Toggle::make('gateway_enabled')
+                                            ->label('Aktifkan Payment Gateway Otomatis')
+                                            ->helperText('Pembeli membayar instan via Virtual Account / E-Wallet / QRIS Dinamis dan terverifikasi otomatis via Webhook callback.')
+                                            ->default($gatewayEnabled)
+                                            ->live(),
+
+                                        Radio::make('gateway_provider')
+                                            ->label('Penyedia Payment Gateway')
+                                            ->options([
+                                                'midtrans' => 'Midtrans (Snap & Core API)',
+                                                'xendit' => 'Xendit (Invoice & VA)',
+                                            ])
+                                            ->default($gatewayProvider)
+                                            ->visible(fn ($get) => (bool) $get('gateway_enabled')),
+
+                                        Radio::make('gateway_mode')
+                                            ->label('Environment Status')
+                                            ->options([
+                                                'sandbox' => 'Sandbox (Mode Testing & Percobaan)',
+                                                'production' => 'Production (Mode Transaksi Nyata)',
+                                            ])
+                                            ->default($gatewayMode)
+                                            ->visible(fn ($get) => (bool) $get('gateway_enabled')),
+                                    ]),
                             ];
                         }
 
@@ -161,12 +233,28 @@ class SettingsTable
                     })
                     ->action(function (Setting $record, array $data) {
                         if ($record->key === 'payment_methods') {
-                            $selected = $data['methods'] ?? [];
-                            $allMethods = ['manual_bca', 'manual_mandiri', 'manual_bri', 'manual_qris'];
-                            $val = [];
-                            foreach ($allMethods as $m) {
-                                $val[$m] = in_array($m, $selected);
+                            $systemEnabled = (bool) ($data['system_enabled'] ?? true);
+                            $manualEnabled = (bool) ($data['manual_enabled'] ?? false);
+                            $selectedChannels = $data['manual_channels'] ?? [];
+                            $allChannels = ['manual_bca', 'manual_mandiri', 'manual_bri', 'manual_qris'];
+                            $channels = [];
+                            foreach ($allChannels as $ch) {
+                                $channels[$ch] = in_array($ch, $selectedChannels);
                             }
+
+                            $gatewayEnabled = (bool) ($data['gateway_enabled'] ?? false);
+                            $gatewayProvider = $data['gateway_provider'] ?? 'midtrans';
+                            $gatewayMode = $data['gateway_mode'] ?? 'sandbox';
+
+                            $val = [
+                                'system_enabled' => $systemEnabled,
+                                'manual_enabled' => $manualEnabled,
+                                'channels' => $channels,
+                                'gateway_enabled' => $gatewayEnabled,
+                                'gateway_provider' => $gatewayProvider,
+                                'gateway_mode' => $gatewayMode,
+                            ];
+
                             $record->update(['value' => $val]);
                         } elseif (in_array($record->key, ['shipping_due_hours', 'payment_hold_hours'])) {
                             // Cast integer hanya untuk jam agar angka nol di depan pada rekening/WA tidak hilang

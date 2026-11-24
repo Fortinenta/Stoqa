@@ -248,3 +248,43 @@ test('metode pembayaran disembunyikan jika nomor rekening belum diisi atau semua
         ->and($active['manual_bca']['account'])->toBe('1234567890')
         ->and($active['manual_bca']['holder'])->toBe('Stoqa Official');
 });
+
+test('master toggle system_enabled mematikan seluruh sistem pembayaran dan memicu status nonaktif', function () {
+    $component = new OrderHistory;
+
+    Setting::set('bank_bca_account', '1234567890');
+    Setting::set('bank_bca_holder', 'Stoqa Official');
+
+    // 1. Konfigurasi dengan master toggle nonaktif (system_enabled = false)
+    Setting::set('payment_methods', [
+        'system_enabled' => false,
+        'manual_enabled' => true,
+        'channels' => ['manual_bca' => true],
+        'gateway_enabled' => true,
+    ]);
+
+    expect($component->isPaymentSystemEnabled())->toBeFalse()
+        ->and($component->getActivePaymentMethods())->toBe([]);
+
+    // 2. Master toggle aktif, tetapi mode manual dan gateway dimatikan
+    Setting::set('payment_methods', [
+        'system_enabled' => true,
+        'manual_enabled' => false,
+        'channels' => ['manual_bca' => true],
+        'gateway_enabled' => false,
+    ]);
+
+    expect($component->isPaymentSystemEnabled())->toBeFalse()
+        ->and($component->getActivePaymentMethods())->toBe([]);
+
+    // 3. Master toggle aktif dan mode manual aktif
+    Setting::set('payment_methods', [
+        'system_enabled' => true,
+        'manual_enabled' => true,
+        'channels' => ['manual_bca' => true],
+        'gateway_enabled' => false,
+    ]);
+
+    expect($component->isPaymentSystemEnabled())->toBeTrue()
+        ->and($component->getActivePaymentMethods())->toHaveKey('manual_bca');
+});

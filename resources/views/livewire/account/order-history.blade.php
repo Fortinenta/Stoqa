@@ -169,7 +169,7 @@
                                         <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         <span>Bukti Terkirim (Ubah)</span>
                                     </button>
-                                @else
+                                @elseif ($this->isPaymentSystemEnabled())
                                     <button
                                         type="button"
                                         wire:click="openPaymentModal({{ $order->id }})"
@@ -177,6 +177,15 @@
                                     >
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                                         <span>Bayar Sekarang</span>
+                                    </button>
+                                @else
+                                    <button
+                                        type="button"
+                                        wire:click="openPaymentModal({{ $order->id }})"
+                                        class="text-xs px-3.5 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-300 font-bold hover:bg-amber-100 transition flex items-center gap-1.5 shadow-xs"
+                                    >
+                                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        <span>Info Pembayaran</span>
                                     </button>
                                 @endif
                             @endif
@@ -248,17 +257,49 @@
                         </div>
 
                         @php
+                            $sysConfig = $this->getPaymentSystemConfig();
                             $activeMethods = $this->getActivePaymentMethods();
                             $selectedDetails = $activeMethods[$paymentMethod] ?? (reset($activeMethods) ?: null);
+                            $csWa = \App\Models\Setting::get('help_whatsapp', '');
                         @endphp
 
-                        @if (empty($activeMethods))
-                            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-                                <strong class="font-bold flex items-center gap-1.5 text-amber-900 mb-1">
+                        @if (! $sysConfig['system_enabled'])
+                            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs space-y-2">
+                                <div class="flex items-center gap-2 font-bold text-amber-900">
                                     <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                    Kanal Pembayaran Belum Tersedia
-                                </strong>
-                                <p>Saat ini tidak ada rekening atau metode pembayaran yang aktif. Silakan hubungi admin toko via WhatsApp untuk konfirmasi pembayaran manual.</p>
+                                    <span>Sistem Pembayaran Sedang Dinonaktifkan (Maintenance)</span>
+                                </div>
+                                <p class="leading-relaxed">
+                                    Mohon maaf, saat ini transaksi pembayaran sedang dinonaktifkan sementara oleh admin toko untuk pemeliharaan sistem.
+                                    <strong>Stok produk pesanan Anda tetap aman dalam masa hold.</strong>
+                                </p>
+                                @if ($csWa)
+                                    <p class="text-[11px] pt-1.5 border-t border-amber-200/60">
+                                        Perlu bantuan atau konfirmasi transfer langsung? Hubungi WhatsApp CS kami:
+                                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $csWa) }}" target="_blank" class="font-bold underline text-amber-950">
+                                            +{{ $csWa }}
+                                        </a>
+                                    </p>
+                                @endif
+                            </div>
+                        @elseif (empty($activeMethods))
+                            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs space-y-2">
+                                <div class="flex items-center gap-2 font-bold text-amber-900">
+                                    <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    <span>Kanal Transfer Bank Belum Tersedia</span>
+                                </div>
+                                <p class="leading-relaxed">
+                                    Rekening pembayaran toko sedang dipersiapkan atau belum diaktifkan oleh admin.
+                                    Stok pesanan Anda tetap aman dalam masa hold.
+                                </p>
+                                @if ($csWa)
+                                    <p class="text-[11px] pt-1.5 border-t border-amber-200/60">
+                                        Hubungi CS kami untuk instruksi pembayaran manual:
+                                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $csWa) }}" target="_blank" class="font-bold underline text-amber-950">
+                                            +{{ $csWa }}
+                                        </a>
+                                    </p>
+                                @endif
                             </div>
                         @else
                             <!-- Pilihan Metode Transfer Bank Manual -->

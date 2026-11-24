@@ -28,10 +28,17 @@ class InitialDataSeeder extends Seeder
             'qris_holder' => '',
             'help_whatsapp' => '',
             'payment_methods' => [
-                'manual_bca' => false,
-                'manual_mandiri' => false,
-                'manual_bri' => false,
-                'manual_qris' => false,
+                'system_enabled' => true,
+                'manual_enabled' => false,
+                'channels' => [
+                    'manual_bca' => false,
+                    'manual_mandiri' => false,
+                    'manual_bri' => false,
+                    'manual_qris' => false,
+                ],
+                'gateway_enabled' => false,
+                'gateway_provider' => 'midtrans',
+                'gateway_mode' => 'sandbox',
             ],
             'low_stock_alert' => true,
         ];
