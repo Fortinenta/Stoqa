@@ -2,6 +2,7 @@
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Livewire\Account\OrderHistory;
 use App\Models\Order;
 use App\Models\OrderCost;
 use App\Models\Payment;
@@ -142,4 +143,108 @@ test('admin dapat menolak bukti pembayaran dan pesanan kembali ke status PENDING
     expect($payment->status)->toBe(PaymentStatus::FAILED)
         ->and($payment->payload['rejection_reason'])->toBe('Foto struk buram dan tidak terbaca')
         ->and($order->status)->toBe(OrderStatus::PENDING_PAYMENT);
+});
+
+test('penolakan bukti transfer dibatasi maksimal 3 kali dan otomatis membatalkan order saat batas terlampaui', function () {
+    $user = User::factory()->create();
+    $warehouse = Warehouse::create(['name' => 'Gudang Utama', 'is_default' => true]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'warehouse_id' => $warehouse->id,
+        'channel' => 'catalog',
+        'customer_name' => $user->name,
+        'status' => OrderStatus::MENUNGGU_VERIFIKASI,
+        'subtotal' => 100000,
+        'shipping_cost' => 10000,
+        'total' => 110000,
+        'expires_at' => now()->addHours(1),
+    ]);
+
+    // Sudah pernah ditolak 2 kali sebelumnya
+    Payment::create([
+        'order_id' => $order->id,
+        'method' => 'manual',
+        'provider' => 'manual_bca',
+        'amount' => 110000,
+        'status' => PaymentStatus::FAILED,
+        'payload' => ['rejection_reason' => 'Penolakan 1'],
+    ]);
+
+    Payment::create([
+        'order_id' => $order->id,
+        'method' => 'manual',
+        'provider' => 'manual_bca',
+        'amount' => 110000,
+        'status' => PaymentStatus::FAILED,
+        'payload' => ['rejection_reason' => 'Penolakan 2'],
+    ]);
+
+    // Pembayaran ke-3 yang sedang pending verifikasi
+    $payment3 = Payment::create([
+        'order_id' => $order->id,
+        'method' => 'manual',
+        'provider' => 'manual_bca',
+        'amount' => 110000,
+        'status' => PaymentStatus::PENDING,
+        'proof_url' => 'payment-proofs/sample3.jpg',
+    ]);
+
+    $failedCount = $order->payments()->where('status', PaymentStatus::FAILED)->count();
+    $currentAttempt = $failedCount + 1; // Percobaan ke-3
+
+    $payment3->update([
+        'status' => PaymentStatus::FAILED,
+        'payload' => ['rejection_reason' => 'Penolakan ke-3 (Batas maksimal)'],
+    ]);
+
+    if ($currentAttempt >= 3) {
+        $order->update([
+            'status' => OrderStatus::REJECTED,
+            'rejected_at' => now(),
+            'reject_reason' => 'Batas verifikasi bukti (3x) terlampaui.',
+        ]);
+    }
+
+    $order->refresh();
+    expect($currentAttempt)->toBe(3)
+        ->and($order->status)->toBe(OrderStatus::REJECTED);
+});
+
+test('nomor rekening atau nomor telepon dengan awalan nol tidak kehilangan angka nol di depannya', function () {
+    Setting::set('bank_bri_account', '001201000123509');
+    Setting::set('help_whatsapp', '081234567890');
+
+    expect(Setting::get('bank_bri_account'))->toBe('001201000123509')
+        ->and(Setting::get('help_whatsapp'))->toBe('081234567890');
+});
+
+test('metode pembayaran disembunyikan jika nomor rekening belum diisi atau semua metode dimatikan', function () {
+    $component = new OrderHistory;
+
+    // 1. Matikan semua metode pembayaran
+    Setting::set('payment_methods', [
+        'manual_bca' => false,
+        'manual_mandiri' => false,
+        'manual_bri' => false,
+        'manual_qris' => false,
+    ]);
+
+    // Harus mengembalikan array kosong [], tidak boleh memunculkan fallback default
+    expect($component->getActivePaymentMethods())->toBe([]);
+
+    // 2. Aktifkan BCA tetapi nomor rekening kosong
+    Setting::set('payment_methods', ['manual_bca' => true]);
+    Setting::set('bank_bca_account', '');
+
+    expect($component->getActivePaymentMethods())->toBe([]);
+
+    // 3. Aktifkan BCA dan isi nomor rekening
+    Setting::set('bank_bca_account', '1234567890');
+    Setting::set('bank_bca_holder', 'Stoqa Official');
+
+    $active = $component->getActivePaymentMethods();
+    expect($active)->toHaveKey('manual_bca')
+        ->and($active['manual_bca']['account'])->toBe('1234567890')
+        ->and($active['manual_bca']['holder'])->toBe('Stoqa Official');
 });

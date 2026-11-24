@@ -26,6 +26,9 @@ class SettingForm
                         if ($key === 'help_whatsapp') {
                             return ['required', 'string', 'regex:/^[0-9+]{8,20}$/'];
                         }
+                        if ($key === 'qris_nmid') {
+                            return ['required', 'string', 'max:50'];
+                        }
                         if ($key === 'payment_methods') {
                             return ['required', 'json'];
                         }
@@ -35,6 +38,7 @@ class SettingForm
                     ->helperText(fn (?Setting $record) => match ($record?->key) {
                         'shipping_due_hours', 'payment_hold_hours' => 'Nilai bilangan bulat dalam satuan jam (antara 1 hingga 168 jam / 7 hari).',
                         'help_whatsapp' => 'Nomor WhatsApp resmi diawali kode negara (contoh: 6281234567890).',
+                        'qris_nmid' => 'National Merchant ID resmi QRIS toko.',
                         'payment_methods' => 'Format JSON konfigurasi kanal pembayaran aktif.',
                         default => null,
                     })

@@ -27,6 +27,8 @@ class SettingsTable
                         'bank_mandiri_holder' => 'Atas Nama Rekening Mandiri',
                         'bank_bri_account' => 'Nomor Rekening BRI',
                         'bank_bri_holder' => 'Atas Nama Rekening BRI',
+                        'qris_nmid' => 'NMID QRIS Toko',
+                        'qris_holder' => 'Atas Nama QRIS Toko',
                         'help_whatsapp' => 'Kontak WhatsApp Bantuan / CS',
                         'low_stock_alert' => 'Peringatan Stok Menipis',
                         'payment_methods' => 'Metode Pembayaran Aktif',
@@ -38,6 +40,8 @@ class SettingsTable
                         'bank_bca_account' => 'Nomor rekening bank BCA yang tampil di halaman pembayaran pembeli.',
                         'bank_mandiri_account' => 'Nomor rekening bank Mandiri yang tampil di halaman pembayaran pembeli.',
                         'bank_bri_account' => 'Nomor rekening bank BRI yang tampil di halaman pembayaran pembeli.',
+                        'qris_nmid' => 'National Merchant ID (NMID) resmi untuk pembayaran via QRIS.',
+                        'qris_holder' => 'Nama merchant atau pemilik rekening yang terdaftar pada QRIS.',
                         'help_whatsapp' => 'Nomor kontak WhatsApp admin/toko untuk bantuan pelanggan.',
                         'payment_methods' => 'Saklar metode transfer/pembayaran yang aktif dan dapat dipilih pembeli.',
                         default => 'Parameter konfigurasi operasional Stoqa.',
@@ -88,6 +92,8 @@ class SettingsTable
                         'bank_mandiri_holder' => 'Atas Nama Rekening Mandiri',
                         'bank_bri_account' => 'Nomor Rekening BRI',
                         'bank_bri_holder' => 'Atas Nama Rekening BRI',
+                        'qris_nmid' => 'NMID QRIS Toko',
+                        'qris_holder' => 'Atas Nama QRIS Toko',
                         'help_whatsapp' => 'WhatsApp Bantuan / CS',
                         'payment_methods' => 'Metode Pembayaran Aktif',
                         default => $record->key,
@@ -134,6 +140,17 @@ class SettingsTable
                             ];
                         }
 
+                        if ($record->key === 'qris_nmid') {
+                            return [
+                                TextInput::make('value')
+                                    ->label('National Merchant ID (NMID)')
+                                    ->helperText('Contoh: ID102003004050 atau kode NMID QRIS resmi.')
+                                    ->maxLength(50)
+                                    ->default((string) $record->value)
+                                    ->required(),
+                            ];
+                        }
+
                         return [
                             TextInput::make('value')
                                 ->label('Nilai Pengaturan')
@@ -151,9 +168,11 @@ class SettingsTable
                                 $val[$m] = in_array($m, $selected);
                             }
                             $record->update(['value' => $val]);
+                        } elseif (in_array($record->key, ['shipping_due_hours', 'payment_hold_hours'])) {
+                            // Cast integer hanya untuk jam agar angka nol di depan pada rekening/WA tidak hilang
+                            $record->update(['value' => (int) $data['value']]);
                         } else {
-                            $val = is_numeric($data['value']) ? (int) $data['value'] : $data['value'];
-                            $record->update(['value' => $val]);
+                            $record->update(['value' => (string) $data['value']]);
                         }
 
                         Notification::make()

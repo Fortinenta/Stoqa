@@ -49,45 +49,52 @@ class OrderHistory extends Component
 
     public function getActivePaymentMethods(): array
     {
-        $settingMethods = Setting::get('payment_methods', [
-            'manual_bca' => true,
-            'manual_mandiri' => true,
-            'manual_bri' => true,
-            'manual_qris' => false,
-        ]);
-
-        $available = [
-            'manual_bca' => [
-                'name' => 'Bank BCA',
-                'account' => (string) Setting::get('bank_bca_account', '1234-5678-90'),
-                'holder' => (string) Setting::get('bank_bca_holder', 'PT Stoqa Niaga Bersama'),
-            ],
-            'manual_mandiri' => [
-                'name' => 'Bank Mandiri',
-                'account' => (string) Setting::get('bank_mandiri_account', '137-00-1234567-8'),
-                'holder' => (string) Setting::get('bank_mandiri_holder', 'PT Stoqa Niaga Bersama'),
-            ],
-            'manual_bri' => [
-                'name' => 'Bank BRI',
-                'account' => (string) Setting::get('bank_bri_account', '0012-01-000123-50-9'),
-                'holder' => (string) Setting::get('bank_bri_holder', 'PT Stoqa Niaga Bersama'),
-            ],
-            'manual_qris' => [
-                'name' => 'QRIS (Gopay / OVO / Dana / BCA)',
-                'account' => 'NMID: ID102003004050',
-                'holder' => (string) Setting::get('bank_bca_holder', 'PT Stoqa Niaga Bersama'),
-            ],
-        ];
-
+        $settingMethods = Setting::get('payment_methods', []);
         if (! is_array($settingMethods)) {
-            return $available;
+            return [];
         }
 
-        $filtered = array_filter($available, function ($key) use ($settingMethods) {
+        $available = [];
+
+        $bcaAccount = trim((string) Setting::get('bank_bca_account', ''));
+        if ($bcaAccount !== '') {
+            $available['manual_bca'] = [
+                'name' => 'Bank BCA',
+                'account' => $bcaAccount,
+                'holder' => (string) Setting::get('bank_bca_holder', ''),
+            ];
+        }
+
+        $mandiriAccount = trim((string) Setting::get('bank_mandiri_account', ''));
+        if ($mandiriAccount !== '') {
+            $available['manual_mandiri'] = [
+                'name' => 'Bank Mandiri',
+                'account' => $mandiriAccount,
+                'holder' => (string) Setting::get('bank_mandiri_holder', ''),
+            ];
+        }
+
+        $briAccount = trim((string) Setting::get('bank_bri_account', ''));
+        if ($briAccount !== '') {
+            $available['manual_bri'] = [
+                'name' => 'Bank BRI',
+                'account' => $briAccount,
+                'holder' => (string) Setting::get('bank_bri_holder', ''),
+            ];
+        }
+
+        $qrisNmid = trim((string) Setting::get('qris_nmid', ''));
+        if ($qrisNmid !== '') {
+            $available['manual_qris'] = [
+                'name' => 'QRIS (Gopay / OVO / Dana / BCA)',
+                'account' => 'NMID: '.$qrisNmid,
+                'holder' => (string) Setting::get('qris_holder', ''),
+            ];
+        }
+
+        return array_filter($available, function ($key) use ($settingMethods) {
             return ! empty($settingMethods[$key]);
         }, ARRAY_FILTER_USE_KEY);
-
-        return ! empty($filtered) ? $filtered : $available;
     }
 
     public function openPaymentModal(int $orderId)
@@ -106,7 +113,7 @@ class OrderHistory extends Component
         $this->proofFile = null;
 
         $activeMethods = $this->getActivePaymentMethods();
-        $this->paymentMethod = array_key_first($activeMethods) ?: 'manual_bca';
+        $this->paymentMethod = ! empty($activeMethods) ? array_key_first($activeMethods) : '';
         $this->showPaymentModal = true;
     }
 
@@ -122,6 +129,12 @@ class OrderHistory extends Component
     public function submitPayment()
     {
         $activeMethods = array_keys($this->getActivePaymentMethods());
+        if (empty($activeMethods)) {
+            session()->flash('error', 'Saat ini kanal pembayaran belum tersedia atau sedang dalam pemeliharaan. Silakan hubungi admin toko.');
+
+            return;
+        }
+
         $inRule = implode(',', $activeMethods);
 
         $this->validate([

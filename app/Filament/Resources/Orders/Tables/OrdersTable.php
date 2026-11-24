@@ -115,7 +115,7 @@ class OrdersTable
                             return null;
                         }
 
-                        if ($record->costs->isEmpty() && (int) round($record->shipping_cost) > 0) {
+                        if ($record->costs->isEmpty()) {
                             return 'Estimasi (Biaya riil belum diisi)';
                         }
 
@@ -312,12 +312,12 @@ class OrdersTable
                 // 4b. Aksi Tolak Bukti Transfer (Bukti Tidak Valid)
                 Action::make('rejectPaymentProof')
                     ->label('Bukti Tidak Valid')
-                    ->icon('heroicon-o-exclamation-triangle')
+                    ->icon('phosphor-warning-circle-duotone')
                     ->color('warning')
                     ->visible(fn (Order $record) => $record->status === OrderStatus::MENUNGGU_VERIFIKASI)
                     ->requiresConfirmation()
                     ->modalHeading('Tolak Bukti Transfer / Bukti Tidak Valid')
-                    ->modalDescription('Tolak bukti transfer yang buram, nominal tidak sesuai, atau salah rekening. Status pesanan akan dikembalikan ke Menunggu Pembayaran dan batas bayar diperpanjang agar pembeli dapat mengunggah ulang.')
+                    ->modalDescription('Tolak bukti transfer yang buram, nominal tidak sesuai, atau salah rekening. Jika ditolak hingga 3 kali, pesanan otomatis dibatalkan dan stok dilepas.')
                     ->form([
                         Textarea::make('rejection_reason')
                             ->label('Alasan Penolakan / Catatan untuk Pembeli')
@@ -326,15 +326,19 @@ class OrdersTable
                     ])
                     ->action(function (Order $record, array $data) {
                         try {
-                            DB::transaction(function () use ($record, $data) {
+                            $isExceeded = false;
+                            $currentAttempt = 1;
+                            $maxRejections = 3;
+
+                            DB::transaction(function () use ($record, $data, &$isExceeded, &$currentAttempt, $maxRejections) {
                                 $lockedOrder = Order::where('id', $record->id)->lockForUpdate()->firstOrFail();
 
                                 if ($lockedOrder->status !== OrderStatus::MENUNGGU_VERIFIKASI) {
                                     throw new \RuntimeException('Pesanan ini tidak sedang menunggu verifikasi.');
                                 }
 
-                                $holdHours = (int) Setting::get('payment_hold_hours', 12);
-                                $newExpiresAt = now()->addHours($holdHours);
+                                $failedCount = $lockedOrder->payments()->where('status', PaymentStatus::FAILED)->count();
+                                $currentAttempt = $failedCount + 1;
 
                                 foreach ($lockedOrder->payments()->where('status', PaymentStatus::PENDING)->get() as $payment) {
                                     $payload = $payment->payload ?? [];
@@ -347,21 +351,44 @@ class OrdersTable
                                     ]);
                                 }
 
-                                $lockedOrder->update([
-                                    'status' => OrderStatus::PENDING_PAYMENT,
-                                    'expires_at' => $newExpiresAt,
-                                ]);
+                                if ($currentAttempt >= $maxRejections) {
+                                    $isExceeded = true;
+                                    $reservationService = app(ReservationService::class);
+                                    $reservationService->release($lockedOrder->id, ReservationStatus::RELEASED);
 
-                                StockReservation::where('order_id', $lockedOrder->id)
-                                    ->where('status', ReservationStatus::ACTIVE)
-                                    ->update(['expires_at' => $newExpiresAt]);
+                                    $lockedOrder->update([
+                                        'status' => OrderStatus::REJECTED,
+                                        'rejected_at' => now(),
+                                        'reject_reason' => "Batas verifikasi bukti ({$maxRejections}x) terlampaui. Alasan terakhir: ".$data['rejection_reason'],
+                                    ]);
+                                } else {
+                                    $holdHours = (int) Setting::get('payment_hold_hours', 12);
+                                    $newExpiresAt = now()->addHours($holdHours);
+
+                                    $lockedOrder->update([
+                                        'status' => OrderStatus::PENDING_PAYMENT,
+                                        'expires_at' => $newExpiresAt,
+                                    ]);
+
+                                    StockReservation::where('order_id', $lockedOrder->id)
+                                        ->where('status', ReservationStatus::ACTIVE)
+                                        ->update(['expires_at' => $newExpiresAt]);
+                                }
                             });
 
-                            Notification::make()
-                                ->title('Bukti Pembayaran Ditolak')
-                                ->body('Status pesanan dikembalikan ke Menunggu Pembayaran dan pembeli dapat mengunggah struk baru.')
-                                ->warning()
-                                ->send();
+                            if ($isExceeded) {
+                                Notification::make()
+                                    ->title('Pesanan Dibatalkan Otomatis')
+                                    ->body("Bukti transfer telah ditolak {$maxRejections} kali. Pesanan otomatis dibatalkan dan reservasi stok dilepaskan.")
+                                    ->danger()
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('Bukti Pembayaran Ditolak')
+                                    ->body("Bukti pembayaran ditolak (Percobaan ke-{$currentAttempt} dari {$maxRejections}). Status pesanan dikembalikan ke Menunggu Pembayaran.")
+                                    ->warning()
+                                    ->send();
+                            }
                         } catch (\Throwable $e) {
                             report($e);
                             Notification::make()
