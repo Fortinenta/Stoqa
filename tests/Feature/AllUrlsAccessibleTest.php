@@ -94,8 +94,9 @@ class AllUrlsAccessibleTest extends TestCase
         // Product list, create, & edit
         $this->get('/admin/products')->assertStatus(200);
         $this->get('/admin/products/create')->assertStatus(200);
-        $this->get('/admin/products/1/edit')->assertStatus(200);
-        $this->get('/admin/products/2/edit')->assertStatus(200);
+        $productIds = Product::orderBy('id')->take(2)->pluck('id');
+        $this->get("/admin/products/{$productIds[0]}/edit")->assertStatus(200);
+        $this->get("/admin/products/{$productIds[1]}/edit")->assertStatus(200);
 
         // Inbound Orders list & create
         $this->get('/admin/inbound-orders')->assertStatus(200);

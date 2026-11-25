@@ -300,8 +300,8 @@ test('movement append-only: total mutasi IN dan OUT sama persis dengan stok on_h
         ],
     ]);
 
-    $totalMovements = StockMovement::where('product_id', $this->productA->id)->sum('qty_base');
-    $onHand = DB::table('stock_levels')
+    $totalMovements = (int) StockMovement::where('product_id', $this->productA->id)->sum('qty_base');
+    $onHand = (int) DB::table('stock_levels')
         ->where('product_id', $this->productA->id)
         ->where('warehouse_id', $this->warehouse->id)
         ->value('on_hand');
