@@ -44,10 +44,12 @@ class InitialDataSeeder extends Seeder
         ];
 
         foreach ($defaults as $key => $value) {
-            DB::table('settings')->updateOrInsert(
-                ['key' => $key],
-                ['value' => json_encode($value), 'created_at' => now(), 'updated_at' => now()]
-            );
+            DB::table('settings')->insertOrIgnore([
+                'key' => $key,
+                'value' => json_encode($value),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
 
         if (DB::getDriverName() === 'pgsql') {

@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\Warehouse;
+use Database\Seeders\InitialDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 
@@ -287,4 +288,17 @@ test('master toggle system_enabled mematikan seluruh sistem pembayaran dan memic
 
     expect($component->isPaymentSystemEnabled())->toBeTrue()
         ->and($component->getActivePaymentMethods())->toHaveKey('manual_bca');
+});
+
+test('menjalankan InitialDataSeeder ulang tidak menimpa pengaturan yang sudah diubah admin', function () {
+    Setting::set('shipping_due_hours', 24);
+    Setting::set('bank_bca_account', '8888999900');
+
+    (new InitialDataSeeder)->run();
+
+    // Nilai yang sudah diubah admin harus tetap terjaga (insertOrIgnore)
+    expect(Setting::get('shipping_due_hours'))->toBe(24)
+        ->and(Setting::get('bank_bca_account'))->toBe('8888999900')
+        // Pengaturan yang belum ada tetap diisi nilai default
+        ->and(Setting::get('payment_hold_hours'))->toBe(12);
 });
