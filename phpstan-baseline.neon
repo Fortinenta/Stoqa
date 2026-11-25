@@ -1,0 +1,415 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/Resources/Orders/Pages/CreateOrder.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Resources/Orders/Pages/CreateOrder.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:batchAllocations\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/Resources/Orders/Pages/CreateOrder.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<0, max\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/Resources/Orders/Pages/CreateOrder.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$note\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Anonymous function has an unused use \$currentAttempt\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Anonymous function has an unused use \$data\.$#'
+			identifier: closure.unusedUse
+			count: 3
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Anonymous function has an unused use \$isExceeded\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Anonymous function has an unused use \$maxRejections\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Call to function in_array\(\) with string and array\{App\\Enums\\OrderStatus\:\:MENUNGGU_ONGKIR, App\\Enums\\OrderStatus\:\:PENDING_PAYMENT, App\\Enums\\OrderStatus\:\:MENUNGGU_VERIFIKASI\} will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Call to function in_array\(\) with string and array\{App\\Enums\\OrderStatus\:\:PAID, App\\Enums\\OrderStatus\:\:SHIPPED, App\\Enums\\OrderStatus\:\:COMPLETED\} will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Call to function in_array\(\) with string and array\{App\\Enums\\OrderStatus\:\:PENDING_PAYMENT, App\\Enums\\OrderStatus\:\:MENUNGGU_VERIFIKASI, App\\Enums\\OrderStatus\:\:MENUNGGU_ONGKIR\} will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Call to function in_array\(\) with string and array\{App\\Enums\\OrderStatus\:\:PENDING_PAYMENT, App\\Enums\\OrderStatus\:\:MENUNGGU_VERIFIKASI\} will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Cannot call method label\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\OrderStatus\:\:MENUNGGU_ONGKIR will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\OrderStatus\:\:MENUNGGU_VERIFIKASI will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\OrderStatus\:\:MENUNGGU_ONGKIR will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\OrderStatus\:\:MENUNGGU_VERIFIKASI will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 3
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>note" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Filament/Resources/Orders/Tables/OrdersTable.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Resources/Products/Pages/CreateProduct.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:units\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/Resources/Products/Pages/CreateProduct.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Resources/Products/Tables/ProductsTable.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: mixed$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Filament/Resources/Products/Tables/ProductsTable.php
+
+		-
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 4
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''channels'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''channels'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''gateway_enabled'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''gateway_enabled'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''gateway_mode'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''gateway_mode'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''gateway_provider'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''gateway_provider'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''manual_bca'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''manual_bca'' on array\{\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''manual_enabled'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''manual_enabled'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''system_enabled'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Offset ''system_enabled'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{\}\) to function array_filter is empty, call has no effect\.$#'
+			identifier: arrayFilter.empty
+			count: 1
+			path: app/Filament/Resources/Settings/Tables/SettingsTable.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 2
+			path: app/Filament/Widgets/InventoryOverviewWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Widgets/RecentOrdersTableWidget.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Filament/Widgets/RecentOrdersTableWidget.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 2
+			path: app/Filament/Widgets/StockMovementChartWidget.php
+
+		-
+			message: '#^Anonymous function has an unused use \$storedPath\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: app/Livewire/Account/OrderHistory.php
+
+		-
+			message: '#^Call to function in_array\(\) with string and array\{App\\Enums\\OrderStatus\:\:MENUNGGU_ONGKIR, App\\Enums\\OrderStatus\:\:PENDING_PAYMENT\} will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Livewire/Account/OrderHistory.php
+
+		-
+			message: '#^Call to function in_array\(\) with string and array\{App\\Enums\\OrderStatus\:\:PENDING_PAYMENT, App\\Enums\\OrderStatus\:\:MENUNGGU_VERIFIKASI\} will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Livewire/Account/OrderHistory.php
+
+		-
+			message: '#^Offset ''system_enabled'' on non\-empty\-array\<mixed, mixed\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Livewire/Account/OrderHistory.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: app/Livewire/Account/OrderHistory.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Catalog/ProductDetail.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Catalog/ProductDetail.php
+
+		-
+			message: '#^Method App\\Models\\Setting\:\:set\(\) should return static\(App\\Models\\Setting\) but returns App\\Models\\Setting\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Setting.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CartService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$conversion_to_base\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/PricingCalculator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_name\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/PricingCalculator.php
+
+		-
+			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/PricingCalculator.php
+
+		-
+			message: '#^Parameter \#2 \$callback of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/PricingCalculator.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>unit_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Services/PricingCalculator.php
+
+		-
+			message: '#^Anonymous function has an unused use \$userId\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: app/Services/ReservationService.php
+
+		-
+			message: '#^Call to function in_array\(\) with string and array\{App\\Enums\\OrderStatus\:\:PENDING_PAYMENT, App\\Enums\\OrderStatus\:\:MENUNGGU_ONGKIR, App\\Enums\\OrderStatus\:\:MENUNGGU_VERIFIKASI\} will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/ReservationService.php
+
+		-
+			message: '#^Cannot call method label\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/ReservationService.php
+
+		-
+			message: '#^Method App\\Services\\ReservationService\:\:consume\(\) should return array but returns null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/ReservationService.php
+
+		-
+			message: '#^Result of static method Illuminate\\Database\\Connection\:\:transaction\(\) \(void\) is used\.$#'
+			identifier: staticMethod.void
+			count: 1
+			path: app/Services/ReservationService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/ReservationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/StockService.php
